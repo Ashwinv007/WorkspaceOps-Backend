@@ -22,7 +22,7 @@ export class TokenServiceImpl implements ITokenService {
         return jwt.sign(
             { userId, email },
             this.JWT_SECRET,
-            { expiresIn: this.JWT_EXPIRY }
+            { expiresIn: this.JWT_EXPIRY } as jwt.SignOptions
         );
     }
 

@@ -6,38 +6,10 @@ import { UserRepositoryImpl } from '../mongoose/UserRepositoryImpl';
 import { TokenServiceImpl } from '../jwt/TokenServiceImpl';
 import { UserPresenter } from '../../interfaces/presenters/UserPresenter';
 
-// Import workspace repositories (temporary - will be cleaned up once workspace module is restructured)
-import { TenantModel } from '../../../workspace/tenant.model';
-import { WorkspaceModel } from '../../../workspace/workspace.model';
-import { WorkspaceUserModel } from '../../../workspace/workspaceUser.model';
-
-/**
- * Temporary workspace repository implementations
- * These will be moved to proper Clean Architecture structure later
- */
-class TenantRepositoryImpl {
-    async create(data: { name: string }) {
-        const tenant = await TenantModel.create(data);
-        return { id: tenant._id.toString(), name: tenant.name };
-    }
-}
-
-class WorkspaceRepositoryImpl {
-    async create(data: { tenantId: string; name: string }) {
-        const workspace = await WorkspaceModel.create(data);
-        return {
-            id: workspace._id.toString(),
-            tenantId: workspace.tenantId.toString(),
-            name: workspace.name
-        };
-    }
-}
-
-class WorkspaceUserRepositoryImpl {
-    async create(data: { workspaceId: string; userId: string; role: string }) {
-        await WorkspaceUserModel.create(data);
-    }
-}
+// Import repository implementations
+import { TenantRepositoryImpl } from '../../../workspace/infrastructure/mongoose/TenantRepositoryImpl';
+import { WorkspaceRepositoryImpl } from '../../../workspace/infrastructure/mongoose/WorkspaceRepositoryImpl';
+import { WorkspaceMemberRepositoryImpl } from '../../../workspace/infrastructure/mongoose/WorkspaceMemberRepositoryImpl';
 
 /**
  * Auth Routes (Infrastructure Layer)
@@ -54,7 +26,7 @@ const router = Router();
 const userRepo = new UserRepositoryImpl();
 const tenantRepo = new TenantRepositoryImpl();
 const workspaceRepo = new WorkspaceRepositoryImpl();
-const workspaceUserRepo = new WorkspaceUserRepositoryImpl();
+const workspaceMemberRepo = new WorkspaceMemberRepositoryImpl();
 const tokenService = new TokenServiceImpl();
 
 // 2. Create use cases with injected dependencies
@@ -62,7 +34,7 @@ const signupUseCase = new SignupUser(
     userRepo,
     tenantRepo,
     workspaceRepo,
-    workspaceUserRepo,
+    workspaceMemberRepo,
     tokenService
 );
 

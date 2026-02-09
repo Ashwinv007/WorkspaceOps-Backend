@@ -3,19 +3,12 @@ import { ITokenService } from '../services/ITokenService';
 import { SignupDTO, SignupResponseDTO } from '../dto/SignupDTO';
 import { User } from '../../domain/entities/User';
 import { AppError } from '../../../../shared/domain/errors/AppError';
-
-// Workspace repository interfaces (will be created later)
-interface ITenantRepository {
-    create(data: { name: string }): Promise<{ id: string; name: string }>;
-}
-
-interface IWorkspaceRepository {
-    create(data: { tenantId: string; name: string }): Promise<{ id: string; tenantId: string; name: string }>;
-}
-
-interface IWorkspaceUserRepository {
-    create(data: { workspaceId: string; userId: string; role: string }): Promise<void>;
-}
+import { ITenantRepository } from '../../../workspace/domain/repositories/ITenantRepository';
+import { IWorkspaceRepository } from '../../../workspace/domain/repositories/IWorkspaceRepository';
+import { IWorkspaceMemberRepository } from '../../../workspace/domain/repositories/IWorkspaceMemberRepository';
+import { Tenant } from '../../../workspace/domain/entities/Tenant';
+import { Workspace } from '../../../workspace/domain/entities/Workspace';
+import { WorkspaceMember } from '../../../workspace/domain/entities/WorkspaceMember';
 
 /**
  * Signup User Use Case (Application Layer)
@@ -36,7 +29,7 @@ export class SignupUser {
         private readonly userRepo: IUserRepository,
         private readonly tenantRepo: ITenantRepository,
         private readonly workspaceRepo: IWorkspaceRepository,
-        private readonly workspaceUserRepo: IWorkspaceUserRepository,
+        private readonly workspaceMemberRepo: IWorkspaceMemberRepository,
         private readonly tokenService: ITokenService
     ) { }
 
@@ -57,22 +50,16 @@ export class SignupUser {
         const savedUser = await this.userRepo.save(userToSave);
 
         // 5. Create tenant
-        const tenant = await this.tenantRepo.create({
-            name: `${dto.email}'s Tenant`
-        });
+        const tenantToSave = Tenant.create(`${dto.email}'s Tenant`);
+        const tenant = await this.tenantRepo.create(tenantToSave);
 
         // 6. Create default workspace
-        const workspace = await this.workspaceRepo.create({
-            tenantId: tenant.id,
-            name: 'Default Workspace'
-        });
+        const workspaceToSave = Workspace.create(tenant.id, 'Default Workspace');
+        const workspace = await this.workspaceRepo.create(workspaceToSave);
 
         // 7. Assign OWNER role
-        await this.workspaceUserRepo.create({
-            workspaceId: workspace.id,
-            userId: savedUser.id,
-            role: 'OWNER'
-        });
+        const memberToSave = WorkspaceMember.create(workspace.id, savedUser.id, 'OWNER');
+        await this.workspaceMemberRepo.create(memberToSave);
 
         // 8. Generate auth token
         const token = this.tokenService.generateToken(savedUser.id, savedUser.email);

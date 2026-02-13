@@ -18,6 +18,30 @@ export class WorkspaceMemberRepositoryImpl implements IWorkspaceMemberRepository
         return this.toDomain(doc);
     }
 
+    async findByUserId(userId: string): Promise<WorkspaceMember[]> {
+        const docs = await WorkspaceMemberModel.find({ userId });
+        return docs.map(doc => this.toDomain(doc));
+    }
+
+    async findByWorkspaceId(workspaceId: string): Promise<WorkspaceMember[]> {
+        const docs = await WorkspaceMemberModel.find({ workspaceId });
+        return docs.map(doc => this.toDomain(doc));
+    }
+
+    async update(id: string, data: Partial<WorkspaceMember>): Promise<WorkspaceMember> {
+        const doc = await WorkspaceMemberModel.findByIdAndUpdate(
+            id,
+            { $set: { role: data.role } },
+            { new: true }
+        );
+        if (!doc) throw new Error('Workspace member not found');
+        return this.toDomain(doc);
+    }
+
+    async delete(id: string): Promise<void> {
+        await WorkspaceMemberModel.findByIdAndDelete(id);
+    }
+
     private toDomain(doc: any): WorkspaceMember {
         return new WorkspaceMember(
             doc._id.toString(),

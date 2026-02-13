@@ -1,0 +1,203 @@
+### WorkspaceOps Backend - Workspace API Tests
+### 
+### Prerequisites:
+### 1. Run `npm run dev` to start the server
+### 2. First run auth tests from test-auth.http to get tokens
+### 3. Copy the tokens and IDs to use below
+
+@baseUrl = http://localhost:4000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OThhZjNlZjRiODU1NGUwYTIwYWJmZjUiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJpYXQiOjE3NzA3MTQwOTUsImV4cCI6MTc3MDgwMDQ5NX0._CZcr8Zre1pZvCKfexUpXv54CKi_cypzeNGU5pJfYvM
+@tenantId = 698af3ef4b8554e0a20abff7
+@workspaceId = 698af3ef4b8554e0a20abff9
+@userId = 698af3ef4b8554e0a20abff5
+
+####################
+# Auth Middleware Test
+####################
+
+### Test 1: Unauthorized access (no token)
+GET {{baseUrl}}/workspaces
+Content-Type: application/json
+
+### Test 2: Invalid token
+GET {{baseUrl}}/workspaces
+Authorization: Bearer INVALID_TOKEN
+Content-Type: application/json
+
+### Test 3: Valid token - should work
+GET {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+####################
+# Workspace Operations
+####################
+
+### Test 4: Create a new workspace
+POST {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tenantId": "{{tenantId}}",
+  "name": "Development Workspace"
+}
+
+### Test 5: Create another workspace
+POST {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tenantId": "{{tenantId}}",
+  "name": "QA Workspace"
+}
+
+### Test 6: Get all user workspaces
+GET {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+####################
+# Workspace Member Operations
+####################
+
+### Test 7: Invite a user to workspace (requires another user ID)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "invitedUserId": "{{userId}}",
+  "role": "MEMBER"
+}
+
+### Test 8: Invite user with ADMIN role
+POST {{baseUrl}}/workspaces/{{workspaceId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "invitedUserId": "{{userId}}",
+  "role": "ADMIN"
+}
+
+### Test 9: Update member role
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/members/MEMBER_ID_HERE
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "role": "ADMIN"
+}
+
+### Test 10: Try to downgrade from OWNER (should fail if last owner)
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/members/MEMBER_ID_HERE
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "role": "MEMBER"
+}
+
+### Test 11: Remove a member
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/members/MEMBER_ID_HERE
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+### Test 12: Try to remove last owner (should fail)
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/members/OWNER_MEMBER_ID_HERE
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+####################
+# RBAC Tests
+####################
+
+### Test 13: Try to create workspace as VIEWER (need viewer token - should fail with 403)
+POST {{baseUrl}}/workspaces
+Authorization: Bearer {{viewerToken}}
+Content-Type: application/json
+
+{
+  "tenantId": "{{tenantId}}",
+  "name": "Unauthorized Workspace"
+}
+
+### Test 14: Try to invite user as MEMBER (should fail with 403)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/members
+Authorization: Bearer {{memberToken}}
+Content-Type: application/json
+
+{
+  "invitedUserId": "{{userId}}",
+  "role": "MEMBER"
+}
+
+####################
+# Error Cases
+####################
+
+### Test 15: Create workspace with invalid tenant ID
+POST {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tenantId": "invalid-tenant-id",
+  "name": "Test Workspace"
+}
+
+### Test 16: Create workspace with missing name
+POST {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "tenantId": "{{tenantId}}"
+}
+
+### Test 17: Invite non-existent user
+POST {{baseUrl}}/workspaces/{{workspaceId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "invitedUserId": "non-existent-user-id",
+  "role": "MEMBER"
+}
+
+### Test 18: Invite user with invalid role
+POST {{baseUrl}}/workspaces/{{workspaceId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "invitedUserId": "{{userId}}",
+  "role": "INVALID_ROLE"
+}
+
+### Test 19: Invite user who is already a member
+POST {{baseUrl}}/workspaces/{{workspaceId}}/members
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "invitedUserId": "{{userId}}",
+  "role": "MEMBER"
+}
+
+####################
+# Success Criteria
+####################
+# ✅ Test 1-2: Should return 401 Unauthorized
+# ✅ Test 3: Should return 200 with workspace list
+# ✅ Test 4-5: Should return 201 with workspace details
+# ✅ Test 6: Should return 200 with all workspaces (now includes 3 total)
+# ✅ Test 7-8: Should return 201 with member details
+# ✅ Test 9: Should return 200 with updated member
+# ✅ Test 10: Should return 400 validation error if last owner
+# ✅ Test 11: Should return 200 success
+# ✅ Test 12: Should return 400 validation error
+# ✅ Test 13-14: Should return 403 Forbidden
+# ✅ Test 15-19: Should return appropriate error messages (404, 400, etc.)

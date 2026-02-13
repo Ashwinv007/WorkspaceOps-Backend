@@ -18,6 +18,23 @@ class WorkspaceMemberRepositoryImpl {
             return null;
         return this.toDomain(doc);
     }
+    async findByUserId(userId) {
+        const docs = await WorkspaceMemberModel_1.WorkspaceMemberModel.find({ userId });
+        return docs.map(doc => this.toDomain(doc));
+    }
+    async findByWorkspaceId(workspaceId) {
+        const docs = await WorkspaceMemberModel_1.WorkspaceMemberModel.find({ workspaceId });
+        return docs.map(doc => this.toDomain(doc));
+    }
+    async update(id, data) {
+        const doc = await WorkspaceMemberModel_1.WorkspaceMemberModel.findByIdAndUpdate(id, { $set: { role: data.role } }, { new: true });
+        if (!doc)
+            throw new Error('Workspace member not found');
+        return this.toDomain(doc);
+    }
+    async delete(id) {
+        await WorkspaceMemberModel_1.WorkspaceMemberModel.findByIdAndDelete(id);
+    }
     toDomain(doc) {
         return new WorkspaceMember_1.WorkspaceMember(doc._id.toString(), doc.workspaceId, doc.userId, doc.role, doc.createdAt);
     }

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const auth_routes_1 = __importDefault(require("./modules/auth/infrastructure/routes/auth.routes"));
+const workspace_routes_1 = __importDefault(require("./modules/workspace/infrastructure/routes/workspace.routes"));
 const errorHandler_1 = require("./shared/interfaces/middleware/errorHandler");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
@@ -14,6 +15,7 @@ app.get('/health', (_req, res) => {
 });
 // Module routes
 app.use('/auth', auth_routes_1.default);
+app.use('/workspaces', workspace_routes_1.default);
 // Global error handler (must be last)
 app.use(errorHandler_1.errorHandler);
 exports.default = app;

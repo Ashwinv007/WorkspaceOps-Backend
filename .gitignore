@@ -1,0 +1,8 @@
+api_keys.txt
+.env
+
+node_modules/
+build/
+
+*.log
+*.tmp   

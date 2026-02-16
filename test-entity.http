@@ -1,0 +1,222 @@
+### Entity Module Tests
+### Prerequisites: Run auth tests first to get tokens and workspace IDs
+
+### Variables (Update these after running auth/workspace tests)
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+@workspaceId = YOUR_WORKSPACE_ID_HERE
+@entityId = ENTITY_ID_AFTER_CREATION
+
+### ============================================
+### 1. SETUP - Login to get token
+### ============================================
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### ============================================
+### 2. CREATE ENTITIES (All Role Types)
+### ============================================
+
+### Create Entity - SELF
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Our Company",
+  "role": "SELF"
+}
+
+### Create Entity - CUSTOMER
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Acme Corporation",
+  "role": "CUSTOMER"
+}
+
+### Create Entity - EMPLOYEE
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "John Doe",
+  "role": "EMPLOYEE"
+}
+
+### Create Entity - VENDOR
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Supplier Inc",
+  "role": "VENDOR"
+}
+
+### ============================================
+### 3. GET ENTITIES
+### ============================================
+
+### Get All Entities in Workspace
+GET {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Authorization: Bearer {{token}}
+
+### ============================================
+### 4. UPDATE ENTITY
+### ============================================
+
+### Update Entity Name
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Updated Entity Name"
+}
+
+### Update Entity Role
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "role": "CUSTOMER"
+}
+
+### Update Both Name and Role
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Updated Name",
+  "role": "VENDOR"
+}
+
+### ============================================
+### 5. DELETE ENTITY (Admin/Owner only)
+### ============================================
+
+### Delete Entity
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### 6. ERROR CASES
+### ============================================
+
+### Create Entity - Invalid Role
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Test Entity",
+  "role": "INVALID_ROLE"
+}
+
+### Create Entity - Empty Name
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "",
+  "role": "CUSTOMER"
+}
+
+### Create Entity - Missing Name
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "role": "CUSTOMER"
+}
+
+### Create Entity - Invalid Workspace ID
+POST {{baseUrl}}/workspaces/invalid-id/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Test Entity",
+  "role": "CUSTOMER"
+}
+
+### Get Entity - Non-existent Workspace
+GET {{baseUrl}}/workspaces/507f1f77bcf86cd799439011/entities
+Authorization: Bearer {{token}}
+
+### Update Entity - Non-existent Entity
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/entities/507f1f77bcf86cd799439011
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Updated Name"
+}
+
+### Delete Entity - Non-existent Entity
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/entities/507f1f77bcf86cd799439011
+Authorization: Bearer {{token}}
+
+### ============================================
+### 7. RBAC TESTS (Requires multiple users)
+### ============================================
+
+### Create Entity - No Auth (Should fail)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+
+{
+  "name": "Test Entity",
+  "role": "CUSTOMER"
+}
+
+### Get Entities - No Auth (Should fail)
+GET {{baseUrl}}/workspaces/{{workspaceId}}/entities
+
+### Update Entity - No Auth (Should fail)
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name"
+}
+
+### Delete Entity - No Auth (Should fail)
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}
+
+### ============================================
+### 8. VALIDATION TESTS
+### ============================================
+
+### Create Entity - Name Too Long (>255 chars)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/entities
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum",
+  "role": "CUSTOMER"
+}
+
+### Update Entity - No Fields Provided
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+}

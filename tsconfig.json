@@ -7,5 +7,10 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": [
+    "debug-token.ts",
+    "setup-test-data.ts",
+    "node_modules"
+  ]
 }

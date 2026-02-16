@@ -17,6 +17,11 @@ const authMiddleware = (req, res, next) => {
     try {
         // Extract token from Authorization header
         const authHeader = req.headers.authorization;
+        console.log('Auth check:', {
+            header: authHeader ? 'Present' : 'Missing',
+            url: req.url,
+            method: req.method
+        });
         if (!authHeader) {
             throw new AppError_1.UnauthorizedError('No authorization token provided');
         }
@@ -26,8 +31,10 @@ const authMiddleware = (req, res, next) => {
             throw new AppError_1.UnauthorizedError('Invalid authorization header format. Expected: Bearer <token>');
         }
         const token = parts[1];
+        console.log('Token extracted:', token.substring(0, 10) + '...');
         // Verify token and extract user info
         const decoded = tokenService.verifyToken(token);
+        console.log('Token verified for user:', decoded.userId);
         // Attach user context to request
         req.user = {
             userId: decoded.userId,
@@ -36,6 +43,7 @@ const authMiddleware = (req, res, next) => {
         next();
     }
     catch (error) {
+        console.error('Auth middleware error:', error);
         // Pass to error handling middleware
         next(error);
     }

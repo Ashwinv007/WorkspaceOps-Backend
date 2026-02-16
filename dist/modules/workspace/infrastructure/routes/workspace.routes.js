@@ -43,7 +43,8 @@ const presenter = new WorkspacePresenter_1.WorkspacePresenter();
 // 4. Create controller with injected use cases
 const workspaceController = new WorkspaceController_1.WorkspaceController(createWorkspaceUseCase, getUserWorkspacesUseCase, inviteUserUseCase, updateMemberUseCase, removeMemberUseCase, presenter);
 // 5. Define routes with authentication and authorization middleware
-router.post('/', auth_middleware_1.authMiddleware, rbac_middleware_1.requireAdmin, workspaceController.createWorkspace);
+// Note: POST / only requires authentication, not RBAC, since no workspace exists yet
+router.post('/', auth_middleware_1.authMiddleware, workspaceController.createWorkspace);
 router.get('/', auth_middleware_1.authMiddleware, workspaceController.getUserWorkspaces);
 router.post('/:id/members', auth_middleware_1.authMiddleware, rbac_middleware_1.requireAdmin, workspaceController.inviteUser);
 router.put('/:id/members/:memberId', auth_middleware_1.authMiddleware, rbac_middleware_1.requireAdmin, workspaceController.updateMember);

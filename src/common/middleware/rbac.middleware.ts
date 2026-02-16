@@ -33,7 +33,8 @@ export const requireRole = (allowedRoles: WorkspaceRole[]) => {
             }
 
             // Extract workspace ID from params or body
-            const workspaceId = req.params.id || req.body.workspaceId;
+            // Support both 'id' and 'workspaceId' parameter names
+            const workspaceId = req.params.workspaceId || req.params.id || req.body.workspaceId;
 
             if (!workspaceId) {
                 throw new ForbiddenError('Workspace ID not found in request');

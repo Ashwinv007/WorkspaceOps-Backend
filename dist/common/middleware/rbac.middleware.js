@@ -30,7 +30,8 @@ const requireRole = (allowedRoles) => {
                 throw new AppError_1.UnauthorizedError('Authentication required');
             }
             // Extract workspace ID from params or body
-            const workspaceId = req.params.id || req.body.workspaceId;
+            // Support both 'id' and 'workspaceId' parameter names
+            const workspaceId = req.params.workspaceId || req.params.id || req.body.workspaceId;
             if (!workspaceId) {
                 throw new AppError_1.ForbiddenError('Workspace ID not found in request');
             }

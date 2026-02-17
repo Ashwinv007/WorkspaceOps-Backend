@@ -1,0 +1,339 @@
+### Document Type Configuration Module - HTTP Tests
+### Base URL and Authentication
+
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+@workspaceId = YOUR_WORKSPACE_ID_HERE
+@documentTypeId = YOUR_DOCUMENT_TYPE_ID_HERE
+
+### ============================================
+### SETUP: Get Auth Token and Workspace ID
+### ============================================
+
+### 1. Signup (to get token)
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "doctype-test@example.com",
+  "password": "SecurePass123!"
+}
+
+### 2. Login (if already have account)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "doctype-test@example.com",
+  "password": "SecurePass123!"
+}
+
+### 3. Get Workspaces (to get workspaceId)
+GET {{baseUrl}}/workspaces
+Authorization: Bearer {{token}}
+
+### ============================================
+### DOCUMENT TYPE CRUD OPERATIONS
+### ============================================
+
+### 4. Create Document Type - Passport (with metadata and expiry)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Passport",
+  "hasMetadata": true,
+  "hasExpiry": true,
+  "fields": [
+    {
+      "fieldKey": "passport_number",
+      "fieldType": "text",
+      "isRequired": true,
+      "isExpiryField": false
+    },
+    {
+      "fieldKey": "issue_date",
+      "fieldType": "date",
+      "isRequired": true,
+      "isExpiryField": false
+    },
+    {
+      "fieldKey": "expiry_date",
+      "fieldType": "date",
+      "isRequired": true,
+      "isExpiryField": true
+    },
+    {
+      "fieldKey": "issuing_country",
+      "fieldType": "text",
+      "isRequired": true,
+      "isExpiryField": false
+    }
+  ]
+}
+
+### 5. Create Document Type - Driver's License
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Driver's License",
+  "hasMetadata": true,
+  "hasExpiry": true,
+  "fields": [
+    {
+      "fieldKey": "license_number",
+      "fieldType": "text",
+      "isRequired": true,
+      "isExpiryField": false
+    },
+    {
+      "fieldKey": "expiry_date",
+      "fieldType": "date",
+      "isRequired": true,
+      "isExpiryField": true
+    },
+    {
+      "fieldKey": "license_class",
+      "fieldType": "text",
+      "isRequired": false,
+      "isExpiryField": false
+    }
+  ]
+}
+
+### 6. Create Document Type - Simple (no metadata, no expiry)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "General Document",
+  "hasMetadata": false,
+  "hasExpiry": false,
+  "fields": []
+}
+
+### 7. Get All Document Types in Workspace
+GET {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Authorization: Bearer {{token}}
+
+### 8. Get Specific Document Type by ID
+GET {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}
+Authorization: Bearer {{token}}
+
+### 9. Update Document Type - Change Name
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "International Passport"
+}
+
+### 10. Update Document Type - Enable Metadata
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "hasMetadata": true
+}
+
+### 11. Add Field to Document Type
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}/fields
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "fieldKey": "nationality",
+  "fieldType": "text",
+  "isRequired": false,
+  "isExpiryField": false
+}
+
+### 12. Delete Document Type
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### VALIDATION & ERROR SCENARIOS
+### ============================================
+
+### 13. ERROR: Create without name
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "",
+  "hasMetadata": false,
+  "hasExpiry": false,
+  "fields": []
+}
+
+### 14. ERROR: Create with hasExpiry=true but no expiry field
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Invalid Document Type",
+  "hasMetadata": true,
+  "hasExpiry": true,
+  "fields": [
+    {
+      "fieldKey": "some_field",
+      "fieldType": "text",
+      "isRequired": false,
+      "isExpiryField": false
+    }
+  ]
+}
+
+### 15. ERROR: Create with expiry field that is not date type
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Invalid Document Type",
+  "hasMetadata": true,
+  "hasExpiry": true,
+  "fields": [
+    {
+      "fieldKey": "expiry_field",
+      "fieldType": "text",
+      "isRequired": true,
+      "isExpiryField": true
+    }
+  ]
+}
+
+### 16. ERROR: Create with duplicate field keys
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Duplicate Fields",
+  "hasMetadata": true,
+  "hasExpiry": false,
+  "fields": [
+    {
+      "fieldKey": "field_name",
+      "fieldType": "text",
+      "isRequired": false,
+      "isExpiryField": false
+    },
+    {
+      "fieldKey": "field_name",
+      "fieldType": "date",
+      "isRequired": false,
+      "isExpiryField": false
+    }
+  ]
+}
+
+### 17. ERROR: Create with hasMetadata=true but no fields
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "No Fields Document",
+  "hasMetadata": true,
+  "hasExpiry": false,
+  "fields": []
+}
+
+### 18. ERROR: Add duplicate field to existing document type
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}/fields
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "fieldKey": "passport_number",
+  "fieldType": "text",
+  "isRequired": false,
+  "isExpiryField": false
+}
+
+### 19. ERROR: Add expiry field when hasExpiry=false
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}/fields
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "fieldKey": "new_expiry",
+  "fieldType": "date",
+  "isRequired": false,
+  "isExpiryField": true
+}
+
+### 20. ERROR: Update to enable hasExpiry without expiry field
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "hasExpiry": true
+}
+
+### 21. ERROR: Invalid workspace ID format
+GET {{baseUrl}}/workspaces/invalid-id/document-types
+Authorization: Bearer {{token}}
+
+### 22. ERROR: Invalid document type ID format
+GET {{baseUrl}}/workspaces/{{workspaceId}}/document-types/invalid-id
+Authorization: Bearer {{token}}
+
+### 23. ERROR: Access without authentication
+GET {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+
+### ============================================
+### RBAC TESTS (requires multiple users)
+### ============================================
+
+### 24. MEMBER: Can read document types
+GET {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Authorization: Bearer {{token}}
+
+### 25. MEMBER: Cannot create document types (should fail)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Unauthorized Create",
+  "hasMetadata": false,
+  "hasExpiry": false,
+  "fields": []
+}
+
+### 26. ADMIN: Can create document types
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Admin Created",
+  "hasMetadata": false,
+  "hasExpiry": false,
+  "fields": []
+}
+
+### 27. ADMIN: Can update document types
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Admin Updated"
+}
+
+### 28. ADMIN: Can delete document types
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/document-types/{{documentTypeId}}
+Authorization: Bearer {{token}}

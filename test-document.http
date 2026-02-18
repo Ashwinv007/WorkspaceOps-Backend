@@ -1,0 +1,250 @@
+### Document Module Tests
+### Prerequisites: Run auth tests first to get tokens and workspace IDs
+
+### Variables (Update these after running auth/workspace/entity/document-type tests)
+@baseUrl = http://localhost:3000
+@token = YOUR_JWT_TOKEN_HERE
+@workspaceId = YOUR_WORKSPACE_ID_HERE
+@documentTypeId = YOUR_DOCUMENT_TYPE_ID_HERE
+@entityId = YOUR_ENTITY_ID_HERE
+@documentId = DOCUMENT_ID_AFTER_UPLOAD
+
+### ======================== ====================
+### 1. SETUP - Login and Create Prerequisites
+### ============================================
+
+### Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Create Document Type with Metadata
+POST {{baseUrl}}/workspaces/{{workspaceId}}/document-types
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Passport",
+  "hasMetadata": true,
+  "hasExpiry": true,
+  "fields": [
+    {
+      "fieldKey": "passportNumber",
+      "fieldType": "text",
+      "isRequired": true
+    },
+    {
+      "fieldKey": "issueDate",
+      "fieldType": "date",
+      "isRequired": false
+    }
+  ]
+}
+
+### ============================================
+### 2. UPLOAD DOCUMENTS
+### ============================================
+
+### Upload Simple Document (Use file path)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/documents
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="test.txt"
+Content-Type: text/plain
+
+This is a test document content.
+------WebKitFormBoundary
+Content-Disposition: form-data; name="documentTypeId"
+
+{{documentTypeId}}
+------WebKitFormBoundary--
+
+### Upload Document with Entity Link
+POST {{baseUrl}}/workspaceops/{{workspaceId}}/documents
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="employee-doc.pdf"
+Content-Type: application/pdf
+
+[Binary PDF Content Here]
+------WebKitFormBoundary
+Content-Disposition: form-data; name="documentTypeId"
+
+{{documentTypeId}}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="entityId"
+
+{{entityId}}
+------WebKitFormBoundary--
+
+### Upload with Metadata
+POST {{baseUrl}}/workspaces/{{workspaceId}}/documents
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="passport.pdf"
+Content-Type: application/pdf
+
+[Binary PDF Content]
+------WebKitFormBoundary
+Content-Disposition: form-data; name="documentTypeId"
+
+{{documentTypeId}}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="metadata"
+
+{"passportNumber": "A12345678", "issueDate": "2023-01-15"}
+------WebKitFormBoundary
+Content-Disposition: form-data; name="expiryDate"
+
+2028-01-15
+------WebKitFormBoundary--
+
+### ============================================
+### 3. GET DOCUMENTS
+### ============================================
+
+### Get All Documents in Workspace
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents
+Authorization: Bearer {{token}}
+
+### Get Documents Filtered by Document Type
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents?documentTypeId={{documentTypeId}}
+Authorization: Bearer {{token}}
+
+### Get Documents Filtered by Entity
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents?entityId={{entityId}}
+Authorization: Bearer {{token}}
+
+### Get Single Document
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents/{{documentId}}
+Authorization: Bearer {{token}}
+
+### Get Documents by Entity (Alternative Route)
+GET {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}/documents
+Authorization: Bearer {{token}}
+
+### Get Expiring Documents (default 30 days)
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents/expiring
+Authorization: Bearer {{token}}
+
+### Get Expiring Documents (custom threshold)
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents/expiring?days=60
+Authorization: Bearer {{token}}
+
+### ============================================
+### 4. DOWNLOAD DOCUMENT
+### ============================================
+
+### Download Document File
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents/{{documentId}}/download
+Authorization: Bearer {{token}}
+
+### ============================================
+### 5. UPDATE DOCUMENT
+### ============================================
+
+### Update Document Metadata
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/documents/{{documentId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "metadata": {
+    "passportNumber": "A98765432",
+    "issueDate": "2024-03-20"
+  }
+}
+
+### Update Entity Link
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/documents/{{documentId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "entityId": "{{entityId}}"
+}
+
+### Update Expiry Date
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/documents/{{documentId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "expiryDate": "2029-12-31"
+}
+
+### ============================================
+### 6. DELETE DOCUMENT
+### ============================================
+
+### Delete Document (Admin/Owner only)
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/documents/{{documentId}}
+Authorization: Bearer {{token}}
+
+### ============================================
+### 7. ERROR CASES
+### ============================================
+
+### Upload without File (Should fail)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/documents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "documentTypeId": "{{documentTypeId}}"
+}
+
+### Upload with Invalid Document Type (Should fail)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/documents
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="test.txt"
+Content-Type: text/plain
+
+Test content
+------WebKitFormBoundary
+Content-Disposition: form-data; name="documentTypeId"
+
+invalid-id-12345
+------WebKitFormBoundary--
+
+### Get Non-existent Document (Should fail)
+GET {{baseUrl}}/workspaces/{{workspaceId}}/documents/507f1f77bcf86cd799439011
+Authorization: Bearer {{token}}
+
+### Update Non-existent Document (Should fail)
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/documents/507f1f77bcf86cd799439011
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "metadata": {"test": "value"}
+}
+
+### ============================================
+### 8. RBAC TESTS
+### ============================================
+
+### Upload without Auth (Should fail)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/documents
+Content-Type: application/json
+
+{
+  "documentTypeId": "{{documentTypeId}}"
+}
+
+### Delete without Admin Role (Should fail - requires ADMIN/OWNER)
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/documents/{{documentId}}
+Authorization: Bearer {{memberToken}}

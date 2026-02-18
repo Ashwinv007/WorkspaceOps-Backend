@@ -105,7 +105,12 @@ CREATE TABLE document_metadata (
 CREATE TABLE work_item_types (
   id UUID PRIMARY KEY,
   workspace_id UUID NOT NULL REFERENCES workspaces(id),
-  name VARCHAR(255) NOT NULL
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  entity_type VARCHAR(20) CHECK (
+    entity_type IN ('SELF', 'CUSTOMER', 'EMPLOYEE', 'VENDOR')
+  ),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE work_items (
@@ -113,17 +118,25 @@ CREATE TABLE work_items (
   workspace_id UUID NOT NULL REFERENCES workspaces(id),
   work_item_type_id UUID NOT NULL REFERENCES work_item_types(id),
   entity_id UUID NOT NULL REFERENCES entities(id),
-  owner_user_id UUID NOT NULL REFERENCES users(id),
+  assigned_to_user_id UUID NOT NULL REFERENCES users(id),
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
   status VARCHAR(20) NOT NULL CHECK (
     status IN ('DRAFT', 'ACTIVE', 'COMPLETED')
   ),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  priority VARCHAR(20) CHECK (
+    priority IN ('LOW', 'MEDIUM', 'HIGH')
+  ),
+  due_date TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE work_item_documents (
   id UUID PRIMARY KEY,
   work_item_id UUID NOT NULL REFERENCES work_items(id),
   document_id UUID NOT NULL REFERENCES documents(id),
+  linked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (work_item_id, document_id)
 );
 

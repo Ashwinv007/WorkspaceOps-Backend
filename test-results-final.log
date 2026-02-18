@@ -1,0 +1,177 @@
+==========================================
+DOCUMENT TYPE CONFIGURATION - TEST SUITE
+==========================================
+Start Time: Mon Feb 16 03:33:13 PM IST 2026
+Base URL: http://localhost:4000
+Workspace ID: 6992ea7e09b9c5223d27a40e
+
+
+==========================================
+SECTION 1: CRUD OPERATIONS
+==========================================
+
+==========================================
+TEST 1: Create Passport Document Type (with metadata and expiry)
+==========================================
+Response Status: 201
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"}}
+[0;32m✅ PASS[0m: Status code matches expected (201)
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"}}
+Captured Passport ID: 6992eb616e85e9bcecd37423
+
+==========================================
+TEST 2: Create Driver's License Document Type
+==========================================
+Response Status: 201
+{"success":true,"data":{"id":"6992eb616e85e9bcecd3742e","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Drivers License","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37430","fieldKey":"license_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37431","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37432","fieldKey":"license_class","fieldType":"text","isRequired":false,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.555Z"}}
+[0;32m✅ PASS[0m: Status code matches expected (201)
+{"success":true,"data":{"id":"6992eb616e85e9bcecd3742e","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Drivers License","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37430","fieldKey":"license_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37431","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37432","fieldKey":"license_class","fieldType":"text","isRequired":false,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.555Z"}}
+Captured License ID: 6992eb616e85e9bcecd3742e
+
+==========================================
+TEST 3: Create Simple Document Type (no metadata, no expiry)
+==========================================
+Response Status: 201
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37438","workspaceId":"6992ea7e09b9c5223d27a40e","name":"General Document","hasMetadata":false,"hasExpiry":false,"fields":[],"createdAt":"2026-02-16T10:03:13.636Z"}}
+[0;32m✅ PASS[0m: Status code matches expected (201)
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37438","workspaceId":"6992ea7e09b9c5223d27a40e","name":"General Document","hasMetadata":false,"hasExpiry":false,"fields":[],"createdAt":"2026-02-16T10:03:13.636Z"}}
+Captured Simple ID: 6992eb616e85e9bcecd37438
+
+==========================================
+TEST 4: Get All Document Types in Workspace
+==========================================
+Response Status: 200
+{"success":true,"data":[{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"},{"id":"6992eb616e85e9bcecd3742e","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Drivers License","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37430","fieldKey":"license_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37431","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37432","fieldKey":"license_class","fieldType":"text","isRequired":false,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.555Z"},{"id":"6992eb616e85e9bcecd37438","workspaceId":"6992ea7e09b9c5223d27a40e","name":"General Document","hasMetadata":false,"hasExpiry":false,"fields":[],"createdAt":"2026-02-16T10:03:13.636Z"}]}
+[0;32m✅ PASS[0m: Status code matches expected (200)
+{"success":true,"data":[{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"},{"id":"6992eb616e85e9bcecd3742e","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Drivers License","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37430","fieldKey":"license_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37431","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37432","fieldKey":"license_class","fieldType":"text","isRequired":false,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.555Z"},{"id":"6992eb616e85e9bcecd37438","workspaceId":"6992ea7e09b9c5223d27a40e","name":"General Document","hasMetadata":false,"hasExpiry":false,"fields":[],"createdAt":"2026-02-16T10:03:13.636Z"}]}
+
+==========================================
+TEST 5: Get Passport Document Type by ID
+==========================================
+Response Status: 200
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"}}
+[0;32m✅ PASS[0m: Status code matches expected (200)
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"}}
+
+==========================================
+TEST 6: Update Document Type Name
+==========================================
+Response Status: 200
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"International Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"}}
+[0;32m✅ PASS[0m: Status code matches expected (200)
+{"success":true,"data":{"id":"6992eb616e85e9bcecd37423","workspaceId":"6992ea7e09b9c5223d27a40e","name":"International Passport","hasMetadata":true,"hasExpiry":true,"fields":[{"id":"6992eb616e85e9bcecd37425","fieldKey":"passport_number","fieldType":"text","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37426","fieldKey":"issue_date","fieldType":"date","isRequired":true,"isExpiryField":false},{"id":"6992eb616e85e9bcecd37427","fieldKey":"expiry_date","fieldType":"date","isRequired":true,"isExpiryField":true},{"id":"6992eb616e85e9bcecd37428","fieldKey":"issuing_country","fieldType":"text","isRequired":true,"isExpiryField":false}],"createdAt":"2026-02-16T10:03:13.426Z"}}
+
+==========================================
+TEST 7: Add Field to Document Type
+==========================================
+Response Status: 201
+{"id":"6992eb616e85e9bcecd3744d","fieldKey":"nationality","fieldType":"text","isRequired":false,"isExpiryField":false}
+[0;32m✅ PASS[0m: Status code matches expected (201)
+{"id":"6992eb616e85e9bcecd3744d","fieldKey":"nationality","fieldType":"text","isRequired":false,"isExpiryField":false}
+
+==========================================
+SECTION 2: VALIDATION ERRORS
+==========================================
+
+==========================================
+TEST 8: ERROR: Create without name
+==========================================
+Response Status: 400
+{"success":false,"error":{"message":"Document type name is required","statusCode":400}}
+[0;32m✅ PASS[0m: Status code matches expected (400)
+{"success":false,"error":{"message":"Document type name is required","statusCode":400}}
+
+==========================================
+TEST 9: ERROR: hasExpiry=true without expiry field
+==========================================
+Response Status: 400
+{"success":false,"error":{"message":"Document type with expiry tracking must have at least one expiry field","statusCode":400}}
+[0;32m✅ PASS[0m: Status code matches expected (400)
+{"success":false,"error":{"message":"Document type with expiry tracking must have at least one expiry field","statusCode":400}}
+
+==========================================
+TEST 10: ERROR: Expiry field with text type
+==========================================
+Response Status: 400
+{"success":false,"error":{"message":"Expiry fields must be of type date","statusCode":400}}
+[0;32m✅ PASS[0m: Status code matches expected (400)
+{"success":false,"error":{"message":"Expiry fields must be of type date","statusCode":400}}
+
+==========================================
+TEST 11: ERROR: Duplicate field keys
+==========================================
+Response Status: 400
+{"success":false,"error":{"message":"Duplicate field keys are not allowed","statusCode":400}}
+[0;32m✅ PASS[0m: Status code matches expected (400)
+{"success":false,"error":{"message":"Duplicate field keys are not allowed","statusCode":400}}
+
+==========================================
+TEST 12: ERROR: hasMetadata=true without fields
+==========================================
+Response Status: 400
+{"success":false,"error":{"message":"Document type with metadata must have at least one field","statusCode":400}}
+[0;32m✅ PASS[0m: Status code matches expected (400)
+{"success":false,"error":{"message":"Document type with metadata must have at least one field","statusCode":400}}
+
+==========================================
+TEST 13: ERROR: Add duplicate field to existing document type
+==========================================
+Response Status: 400
+{"success":false,"error":{"message":"Field with key 'passport_number' already exists","statusCode":400}}
+[0;32m✅ PASS[0m: Status code matches expected (400)
+{"success":false,"error":{"message":"Field with key 'passport_number' already exists","statusCode":400}}
+
+==========================================
+TEST 14: ERROR: Invalid workspace ID format
+==========================================
+Response Status: 403
+{"success":false,"error":{"message":"You are not a member of this workspace","statusCode":403}}
+[0;31m❌ FAIL[0m: Expected 400, got 403
+
+
+==========================================
+TEST 15: ERROR: Invalid document type ID format
+==========================================
+Response Status: 400
+{"success":false,"error":{"message":"Invalid document type ID format","statusCode":400}}
+[0;32m✅ PASS[0m: Status code matches expected (400)
+{"success":false,"error":{"message":"Invalid document type ID format","statusCode":400}}
+
+==========================================
+TEST 16: ERROR: Access without authentication
+==========================================
+Response Status: 401
+{"success":false,"error":{"message":"No authorization token provided","statusCode":401}}
+[0;32m✅ PASS[0m: Status code matches expected (401)
+{"success":false,"error":{"message":"No authorization token provided","statusCode":401}}
+
+==========================================
+SECTION 3: DELETE OPERATIONS
+==========================================
+
+==========================================
+TEST 17: Delete Simple Document Type
+==========================================
+Response Status: 204
+
+[0;32m✅ PASS[0m: Status code matches expected (204)
+
+
+==========================================
+TEST 18: Verify Deleted Document Type Returns 404
+==========================================
+Response Status: 404
+{"success":false,"error":{"message":"Document type not found","statusCode":404}}
+[0;32m✅ PASS[0m: Status code matches expected (404)
+{"success":false,"error":{"message":"Document type not found","statusCode":404}}
+
+==========================================
+TEST EXECUTION SUMMARY
+==========================================
+End Time: Mon Feb 16 03:33:14 PM IST 2026
+
+Total Tests: 18
+[0;32mPassed: 17[0m
+[0;31mFailed: 1[0m
+
+[0;31m❌ SOME TESTS FAILED[0m

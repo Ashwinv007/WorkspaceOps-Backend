@@ -1,10 +1,6 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DocumentTypeRepositoryImpl = void 0;
-const mongoose_1 = __importDefault(require("mongoose"));
 const DocumentType_1 = require("../../domain/entities/DocumentType");
 const DocumentTypeField_1 = require("../../domain/entities/DocumentTypeField");
 const DocumentTypeModel_1 = require("./DocumentTypeModel");
@@ -21,38 +17,27 @@ class DocumentTypeRepositoryImpl {
      * Create a new document type with fields atomically
      */
     async create(documentType, fields) {
-        const session = await mongoose_1.default.startSession();
-        session.startTransaction();
-        try {
-            // Create document type
-            const docTypeDoc = await DocumentTypeModel_1.DocumentTypeModel.create([{
-                    workspaceId: documentType.workspaceId,
-                    name: documentType.name,
-                    hasMetadata: documentType.hasMetadata,
-                    hasExpiry: documentType.hasExpiry
-                }], { session });
-            const createdDocType = docTypeDoc[0];
-            // Create fields
-            if (fields.length > 0) {
-                await DocumentTypeFieldModel_1.DocumentTypeFieldModel.insertMany(fields.map(f => ({
-                    documentTypeId: createdDocType._id,
-                    fieldKey: f.fieldKey,
-                    fieldType: f.fieldType,
-                    isRequired: f.isRequired,
-                    isExpiryField: f.isExpiryField
-                })), { session });
-            }
-            await session.commitTransaction();
-            // Convert to domain entity
-            return this.toDomainDocumentType(createdDocType);
+        // Note: Transactions removed for standalone MongoDB
+        // TODO: Re-enable when using MongoDB replica set
+        // Create document type
+        const docTypeDoc = await DocumentTypeModel_1.DocumentTypeModel.create({
+            workspaceId: documentType.workspaceId,
+            name: documentType.name,
+            hasMetadata: documentType.hasMetadata,
+            hasExpiry: documentType.hasExpiry
+        });
+        // Create fields
+        if (fields.length > 0) {
+            await DocumentTypeFieldModel_1.DocumentTypeFieldModel.insertMany(fields.map(f => ({
+                documentTypeId: docTypeDoc._id,
+                fieldKey: f.fieldKey,
+                fieldType: f.fieldType,
+                isRequired: f.isRequired,
+                isExpiryField: f.isExpiryField
+            })));
         }
-        catch (error) {
-            await session.abortTransaction();
-            throw error;
-        }
-        finally {
-            session.endSession();
-        }
+        // Convert to domain entity
+        return this.toDomainDocumentType(docTypeDoc);
     }
     /**
      * Find document type by ID (without fields)
@@ -99,22 +84,12 @@ class DocumentTypeRepositoryImpl {
      * Delete document type and all its fields
      */
     async delete(id) {
-        const session = await mongoose_1.default.startSession();
-        session.startTransaction();
-        try {
-            // Delete document type
-            await DocumentTypeModel_1.DocumentTypeModel.findByIdAndDelete(id, { session });
-            // Delete all associated fields
-            await DocumentTypeFieldModel_1.DocumentTypeFieldModel.deleteMany({ documentTypeId: id }, { session });
-            await session.commitTransaction();
-        }
-        catch (error) {
-            await session.abortTransaction();
-            throw error;
-        }
-        finally {
-            session.endSession();
-        }
+        // Note: Transactions removed for standalone MongoDB
+        // TODO: Re-enable when using MongoDB replica set
+        // Delete all associated fields first
+        await DocumentTypeFieldModel_1.DocumentTypeFieldModel.deleteMany({ documentTypeId: id });
+        // Delete document type
+        await DocumentTypeModel_1.DocumentTypeModel.findByIdAndDelete(id);
     }
     /**
      * Add a new field to an existing document type

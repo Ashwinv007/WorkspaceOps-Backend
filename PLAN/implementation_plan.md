@@ -4,86 +4,101 @@
 
 WorkspaceOps is a multi-tenant workspace management system with document tracking, entity management, work items, and compliance features. This is a **backend-only** implementation using **Clean Architecture** principles with modular design.
 
-**Scope**: 30-day MVP as defined in HLRs (HLR0001-HLR0034)
+**Scope**: 30-day MVP as defined in HLRs (HLR0001-HLR0029)
 
 ---
 
-## Current Status Analysis (Updated Feb 2026)
+## Current Status (Updated Feb 18, 2026)
 
-### ✅ What's Already Done
+### ✅ Completed Phases
 
-#### Infrastructure
-- Basic Express.js server setup (`src/server.ts`, `src/app.ts`)
+#### Phase 1: Foundation & Infrastructure ✅
+- Express.js server setup (`src/server.ts`, `src/app.ts`)
 - MongoDB connection configuration (`src/config/database.ts`)
 - Environment configuration (`src/config/env.ts`)
-- **App-wide Clean Architecture Structure**
+- Auth middleware (`src/common/middleware/auth.middleware.ts`)
+- RBAC middleware (`src/common/middleware/rbac.middleware.ts`)
+- Error handler (`src/shared/interfaces/middleware/errorHandler.ts`)
+- AppError class, ValidationUtils
 
-#### Auth Module (HLR0001-0002) - **100% Migrated**
-- ✅ **Full Clean Architecture**: Domain, Application, Interfaces, Infrastructure
-- ✅ **Features**: Signup (User + Tenant + Workspace + Member)
-- ✅ **Routes**: `/auth/signup`, `/auth/login` (Registered but need testing)
+#### Phase 2: Auth Module (HLR0001-0003) ✅
+- Full Clean Architecture: 13 files across 4 layers
+- Features: Signup (User + Tenant + Workspace + Member), Login with JWT
+- Routes: `/auth/signup`, `/auth/login`
 
-#### Workspace Module (HLR0002-0003) - **~40% Complete**
-- ✅ **Domain Layer**: `Tenant`, `Workspace`, `WorkspaceMember` entities
-- ✅ **Infrastructure Layer**: Mongoose models & Repositories
-- ❌ **Application/Interfaces**: Missing use cases and controllers
+#### Phase 3: Workspace Module (HLR0004-0007) ✅
+- Full Clean Architecture: 20 files across 4 layers
+- Features: Create workspace, invite users, manage members, RBAC enforcement
+- Routes: `/workspaces/*` with role-based access
 
-#### Documentation
-- Comprehensive planning documents (HLRs, FRDs, ER diagrams, flow diagrams)
-- Updated implementation plan and task breakdown
+#### Phase 4: Entity Module (HLR0008-0010) ✅
+- Full Clean Architecture: 11 files across 4 layers
+- Features: CRUD for entities with roles (SELF, CUSTOMER, EMPLOYEE, VENDOR)
+- Automated tests: `test-entity.sh` (11/11 passed)
 
-### ⚠️ What's In Progress
+#### Phase 5: Document Type Module (HLR0011-0013) ✅
+- Full Clean Architecture: 17 files across 4 layers
+- Features: CRUD for document types, field management, expiry configuration
+- Automated tests: `test-document-type.sh`
 
-- **Workspace Module Completion** - Building Application/Interface layers
-- **Middleware integration** - Auth & RBAC middleware
-- **Login verification** - Testing the login flow
+#### Phase 6: Document Module (HLR0014-0020) ✅
+- Full Clean Architecture: 18 files across 4 layers
+- Features: File upload (multer), entity linking, expiry tracking, download
+- Automated tests: `test-document.sh`, `test-document-quick.sh`
 
-### ❌ What's Missing
+### 🔄 Next Phase
 
-#### Critical Missing Modules
-1. **Entity Module** (HLR0008-0010) - not created
-2. **Document-Type Module** (HLR0011-0013) - not created
-3. **Document Module** (HLR0014-0020) - not created
-4. **Work-Item-Type Module** (HLR0021) - not created
-5. **Work-Item Module** (HLR0022-0025) - not created
-6. **Audit Module** (HLR0026-0027) - not created
-7. **Overview Module** (HLR0028-0029) - not created
+#### Phase 7: Work Item Module (HLR0021-0025) — IN PLANNING
+- Work item types and work items with lifecycle states
+- Entity and document linking
+- See: Work Item implementation plan (pending approval)
 
-#### Infrastructure Gaps
-- No RBAC middleware (HLR0005-0007)
-- No authentication middleware to protect routes
-- No error handling middleware integration
+#### Phase 8: Audit Log Module (HLR0026-0027)
+#### Phase 9: Overview Module (HLR0028-0029)
 
 ---
 
 ## HLR Completion Status
 
-| HLR ID | Requirement | Status | Notes |
-|--------|-------------|--------|-------|
-| **HLR0001** | User signup & tenant creation | ✅ Complete | Clean Arch implemented |
-| **HLR0002** | Default workspace creation | ✅ Complete | Auto-created on signup |
-| **HLR0003** | Workspace as boundary | ✅ Architectural | Enforced by design |
-| **HLR0004** | Invite users | ❌ Not Started | No workspace service/controller |
-| **HLR0005** | One role per user/workspace | ✅ Complete | Schema enforces uniqueness |
-| **HLR0006** | Support 4 roles | ✅ Complete | Enum defined in domain |
-| **HLR0007** | Restrict by role | ❌ Not Started | RBAC middleware missing |
-| **HLR0008-0010** | Entity management | ❌ Not Started | Module doesn't exist |
-| **HLR0011-0013** | Document type config | ❌ Not Started | Module doesn't exist |
-| **HLR0014-0018** | Document management | ❌ Not Started | Module doesn't exist |
-| **HLR0019-0020** | Document expiry | ❌ Not Started | Logic not implemented |
-| **HLR0021** | Work item types | ❌ Not Started | Module doesn't exist |
-| **HLR0022-0025** | Work item lifecycle | ❌ Not Started | Module doesn't exist |
-| **HLR0026-0027** | Audit logging | ❌ Not Started | Module doesn't exist |
-| **HLR0028-0029** | Overview (counts) | ❌ Not Started | Module doesn't exist |
+| HLR ID | Requirement | Status |
+|--------|-------------|--------|
+| **HLR0001** | User signup & tenant creation | ✅ Complete |
+| **HLR0002** | Default workspace creation | ✅ Complete |
+| **HLR0003** | Workspace as boundary | ✅ Complete |
+| **HLR0004** | Invite users | ✅ Complete |
+| **HLR0005** | One role per user/workspace | ✅ Complete |
+| **HLR0006** | Support 4 roles | ✅ Complete |
+| **HLR0007** | Restrict by role | ✅ Complete |
+| **HLR0008** | Create entities | ✅ Complete |
+| **HLR0009** | Assign entity roles | ✅ Complete |
+| **HLR0010** | Entities as subjects | ✅ Complete |
+| **HLR0011** | Define document types | ✅ Complete |
+| **HLR0012** | Custom metadata fields | ✅ Complete |
+| **HLR0013** | Optional expiry tracking | ✅ Complete |
+| **HLR0014** | Upload documents | ✅ Complete |
+| **HLR0015** | Associate document type | ✅ Complete |
+| **HLR0016** | Enforce required metadata | ✅ Complete |
+| **HLR0017** | Optional entity linking | ✅ Complete |
+| **HLR0018** | External file storage + metadata | ✅ Complete |
+| **HLR0019** | Calculate document expiry | ✅ Complete |
+| **HLR0020** | Identify valid/expiring/expired | ✅ Complete |
+| **HLR0021** | Define work item types | ❌ Not Started |
+| **HLR0022** | Create work items | ❌ Not Started |
+| **HLR0023** | Associate workspace/entity/type/owner | ❌ Not Started |
+| **HLR0024** | Lifecycle states (DRAFT→ACTIVE→COMPLETED) | ❌ Not Started |
+| **HLR0025** | Optional document linking | ❌ Not Started |
+| **HLR0026** | Record audit logs | ❌ Not Started |
+| **HLR0027** | Capture actor, action, target, timestamp | ❌ Not Started |
+| **HLR0028** | Workspace overview with counts | ❌ Not Started |
+| **HLR0029** | Entity/document/work item counts | ❌ Not Started |
 
-**Summary**: **3 out of 27 functional HLRs fully implemented.**  
-**Overall Progress: ~20% complete**
+**Summary**: **22 out of 29 functional HLRs fully implemented (76%)**
 
 ---
 
 ## Approved Clean Architecture
 
-> **See [clean_architecture_design.md](file:///home/ashwin/.gemini/antigravity/brain/17f6d29e-0889-479a-8e17-ea66e67fadb1/clean_architecture_design.md) for detailed architecture documentation.**
+> **See [clean_architecture_design.md](file:///home/ashwin/Projects/workspaceops-backend/PLAN/clean_architecture_design.md) for detailed architecture documentation.**
 
 ### Core Principle: Dependencies Point INWARD Only
 
@@ -94,65 +109,13 @@ Infrastructure → Interfaces → Application → Domain
 
 ---
 
-## Proposed Changes (Updated)
-
-### Phase 1: Foundation & Infrastructure (✅ Mostly Done)
-
-#### [DONE] [common/middleware/auth.middleware.ts](file:///home/ashwin/Projects/workspaceops-backend/src/common/middleware/auth.middleware.ts)
-JWT authentication middleware to protect routes and extract user context. (Check if file exists, if not, create)
-
-#### [DONE] [common/middleware/errorHandler.ts](file:///home/ashwin/Projects/workspaceops-backend/src/shared/interfaces/middleware/errorHandler.ts)
-Global error handling module.
-
-### Phase 2: Authentication & User Management (✅ Done)
-
-- **Auth Module** is fully migrated to Clean Architecture.
-- **Signup/Login** use cases implemented.
-- **Routes** registered.
-
-### Phase 3: Workspace & Tenant (Current Focus)
-
-#### [MODIFY] [workspace/application/](file:///home/ashwin/Projects/workspaceops-backend/src/modules/workspace/application)
-Create Application Layer:
-- `use-cases/CreateWorkspace.ts`
-- `use-cases/InviteUser.ts`
-- `use-cases/GetUserWorkspaces.ts`
-- `services/IWorkspaceService.ts`
-
-#### [MODIFY] [workspace/interfaces/](file:///home/ashwin/Projects/workspaceops-backend/src/modules/workspace/interfaces)
-Create Interfaces Layer:
-- `http/WorkspaceController.ts`
-- `presenters/WorkspacePresenter.ts`
-
-#### [MODIFY] [workspace/infrastructure/](file:///home/ashwin/Projects/workspaceops-backend/src/modules/workspace/infrastructure)
-Update Infrastructure Layer:
-- `routes/workspace.routes.ts` (Register routes with DI)
-
-### Phase 4: Entity Management (Next)
-- Implement Entity module using Clean Architecture.
-
-### Phase 5-10: Remaining Modules
-- Continue implementation following Clean Architecture pattern.
-
----
-
-## Next Steps
-
-1. **Complete Workspace Module** (Application & Interface layers)
-2. **Implement RBAC Middleware**
-3. **Add Workspace Routes**
-4. **Verify E2E flow** (Signup -> Login -> Create Workspace -> Invite User)
-
----
-
 ## Technical Decisions Summary
 
-Based on your requirements, here are the confirmed technical choices:
+✅ **File Storage**: Local filesystem (S3-ready architecture)  
+✅ **Authentication**: JWT tokens (24hr expiry)  
+✅ **Validation**: Domain entity self-validation + use case cross-entity validation  
+✅ **Testing**: Automated shell scripts + manual HTTP tests for MVP  
+✅ **DI Strategy**: Manual dependency injection in route files  
+✅ **Architecture**: Strict Clean Architecture across all modules  
 
-✅ **File Storage**: AWS S3 bucket integration  
-✅ **Authentication**: JWT tokens only (24hr expiry)  
-✅ **Validation**: Zod for type-safe request validation  
-✅ **Testing**: Manual testing for MVP (unit tests post-MVP)  
-✅ **API Docs**: Swagger/OpenAPI with auto-generation  
-
-These decisions are reflected throughout the implementation plan above.
+See [technical_decisions.md](file:///home/ashwin/Projects/workspaceops-backend/PLAN/technical_decisions.md) for detailed rationale.

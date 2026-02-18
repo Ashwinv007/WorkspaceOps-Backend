@@ -1007,6 +1007,51 @@ async create(documentType, fields) {
 
 ---
 
+## 8. Work Item Module: Combined Module Design
+
+### Decision: Single `work-item` Module for Both WorkItemType and WorkItem
+
+**Date:** 2026-02-18
+
+**Context:**
+The original `clean_architecture_design.md` planned `work-item-type` and `work-item` as **two separate modules** (mirroring the `document-type` / `document` split). However, `WorkItemType` is structurally much simpler — it has only `id`, `workspaceId`, and `name` (no fields, no metadata, no complex behavior).
+
+**Decision:**
+Combine both into a single `src/modules/work-item/` module with both domain entities sharing the same module boundaries.
+
+**Rationale:**
+- `DocumentType` needed its own module because it has complex sub-entities (`DocumentTypeField`, `FieldType` enum), metadata configuration, and expiry field tracking — justifying 17 files
+- `WorkItemType` is a simple lookup table with only 3 SQL columns — no sub-entities, no config
+- Separate modules would create unnecessary boilerplate (extra routes file, extra DI wiring, extra controller) for what amounts to 3 CRUD endpoints
+- Both entities share cross-referencing needs (e.g., `DeleteWorkItemType` must check `WorkItemRepository` for references)
+
+**Trade-off:**
+- ✅ Reduces file count by ~6 (no duplicate infrastructure wiring)
+- ✅ Simpler DI since both share one routes file
+- ⚠️ Controller becomes slightly larger (11 methods), but is still cohesive
+
+### Decision: Embedded Document Array Instead of Junction Table
+
+**Context:**
+SQL schema uses a `work_item_documents` junction table with `UNIQUE(work_item_id, document_id)` to model many-to-many relationships between work items and documents.
+
+**Decision:**
+In MongoDB, embed `documentIds: ObjectId[]` directly in the `WorkItem` document instead of creating a separate collection.
+
+**Rationale:**
+- MongoDB best practice: embed when the relationship is accessed together (fetching a work item always needs its linked documents)
+- `$addToSet` operator provides the same uniqueness guarantee as `UNIQUE` constraint
+- `$pull` operator enables unlinking without a separate collection query
+- A typical work item links to <20 documents — well within embedding limits
+- Avoids extra collection + extra joins (`$lookup`) for every read
+
+**Trade-off:**
+- ✅ Faster reads (no joins/lookups needed)
+- ✅ Atomic operations (add/remove in single update)
+- ⚠️ If a document is deleted, orphan references may remain in `documentIds` (can be handled by cleanup job or delete hook — not needed for MVP)
+
+---
+
 ## Summary
 
 These decisions form the foundation of WorkspaceOps backend:

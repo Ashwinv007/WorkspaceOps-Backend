@@ -3,6 +3,8 @@ import { DocumentType } from '../../domain/entities/DocumentType';
 import { DocumentTypeField } from '../../domain/entities/DocumentTypeField';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Update Document Type Use Case (Application Layer)
@@ -14,6 +16,7 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 export interface UpdateDocumentTypeInput {
     id: string;
     workspaceId: string;
+    userId: string;
     name?: string;
     hasMetadata?: boolean;
     hasExpiry?: boolean;
@@ -21,7 +24,8 @@ export interface UpdateDocumentTypeInput {
 
 export class UpdateDocumentType {
     constructor(
-        private readonly documentTypeRepo: IDocumentTypeRepository
+        private readonly documentTypeRepo: IDocumentTypeRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(input: UpdateDocumentTypeInput): Promise<{ documentType: DocumentType; fields: DocumentTypeField[] }> {
@@ -79,6 +83,15 @@ export class UpdateDocumentType {
         if (!result) {
             throw new NotFoundError('Document type not found after update');
         }
+
+        // 8. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: input.workspaceId,
+            userId: input.userId,
+            action: AuditAction.DOCUMENT_TYPE_UPDATED,
+            targetType: 'DocumentType',
+            targetId: input.id,
+        });
 
         return result;
     }

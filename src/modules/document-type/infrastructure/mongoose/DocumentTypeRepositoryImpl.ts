@@ -172,6 +172,13 @@ export class DocumentTypeRepositoryImpl implements IDocumentTypeRepository {
     }
 
     /**
+     * Count total document types in a workspace (for overview)
+     */
+    async countByWorkspace(workspaceId: string): Promise<number> {
+        return DocumentTypeModel.countDocuments({ workspaceId });
+    }
+
+    /**
      * Convert Mongoose document to DocumentType domain entity
      */
     private toDomainDocumentType(doc: any): DocumentType {

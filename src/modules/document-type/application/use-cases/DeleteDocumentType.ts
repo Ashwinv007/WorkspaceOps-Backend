@@ -1,6 +1,8 @@
 import { IDocumentTypeRepository } from '../../domain/repositories/IDocumentTypeRepository';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Delete Document Type Use Case (Application Layer)
@@ -12,11 +14,13 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 export interface DeleteDocumentTypeInput {
     id: string;
     workspaceId: string;
+    userId: string;
 }
 
 export class DeleteDocumentType {
     constructor(
-        private readonly documentTypeRepo: IDocumentTypeRepository
+        private readonly documentTypeRepo: IDocumentTypeRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(input: DeleteDocumentTypeInput): Promise<void> {
@@ -41,5 +45,14 @@ export class DeleteDocumentType {
 
         // 3. Delete document type (cascades to fields)
         await this.documentTypeRepo.delete(input.id);
+
+        // 4. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: input.workspaceId,
+            userId: input.userId,
+            action: AuditAction.DOCUMENT_TYPE_DELETED,
+            targetType: 'DocumentType',
+            targetId: input.id,
+        });
     }
 }

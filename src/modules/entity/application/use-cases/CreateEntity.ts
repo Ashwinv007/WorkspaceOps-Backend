@@ -3,6 +3,8 @@ import { IWorkspaceRepository } from '../../../workspace/domain/repositories/IWo
 import { Entity, EntityRole } from '../../domain/entities/Entity';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Create Entity Use Case (Application Layer)
@@ -13,6 +15,7 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 
 export interface CreateEntityDTO {
     workspaceId: string;
+    userId: string;
     name: string;
     role: EntityRole;
 }
@@ -20,7 +23,8 @@ export interface CreateEntityDTO {
 export class CreateEntity {
     constructor(
         private readonly entityRepo: IEntityRepository,
-        private readonly workspaceRepo: IWorkspaceRepository
+        private readonly workspaceRepo: IWorkspaceRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: CreateEntityDTO): Promise<Entity> {
@@ -56,6 +60,15 @@ export class CreateEntity {
             workspaceId: dto.workspaceId,
             name: dto.name.trim(),
             role: dto.role
+        });
+
+        // 6. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.userId,
+            action: AuditAction.ENTITY_CREATED,
+            targetType: 'Entity',
+            targetId: entity.id,
         });
 
         return entity;

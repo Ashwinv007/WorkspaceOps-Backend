@@ -73,4 +73,9 @@ export interface IDocumentTypeRepository {
      * Get all fields for a document type
      */
     getFields(documentTypeId: string): Promise<DocumentTypeField[]>;
+
+    /**
+     * Count total document types in a workspace (for overview)
+     */
+    countByWorkspace(workspaceId: string): Promise<number>;
 }

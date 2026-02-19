@@ -66,4 +66,9 @@ export interface IWorkItemRepository {
      * Count total work items in a workspace (for overview)
      */
     countByWorkspace(workspaceId: string): Promise<number>;
+
+    /**
+     * Count work items grouped by status in a workspace (for overview)
+     */
+    countByStatusGrouped(workspaceId: string): Promise<{ DRAFT: number; ACTIVE: number; COMPLETED: number }>;
 }

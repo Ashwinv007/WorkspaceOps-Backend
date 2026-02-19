@@ -15,6 +15,9 @@ import { WorkspaceRepositoryImpl } from '../mongoose/WorkspaceRepositoryImpl';
 import { WorkspaceMemberRepositoryImpl } from '../mongoose/WorkspaceMemberRepositoryImpl';
 import { UserRepositoryImpl } from '../../../auth/infrastructure/mongoose/UserRepositoryImpl';
 
+// Audit log service (cross-cutting)
+import { auditLogService } from '../../../audit-log/infrastructure/routes/auditLog.routes';
+
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
@@ -41,7 +44,8 @@ const userRepo = new UserRepositoryImpl();
 const createWorkspaceUseCase = new CreateWorkspace(
     tenantRepo,
     workspaceRepo,
-    workspaceMemberRepo
+    workspaceMemberRepo,
+    auditLogService
 );
 
 const getUserWorkspacesUseCase = new GetUserWorkspaces(
@@ -52,15 +56,18 @@ const getUserWorkspacesUseCase = new GetUserWorkspaces(
 const inviteUserUseCase = new InviteUserToWorkspace(
     workspaceRepo,
     workspaceMemberRepo,
-    userRepo
+    userRepo,
+    auditLogService
 );
 
 const updateMemberUseCase = new UpdateWorkspaceMember(
-    workspaceMemberRepo
+    workspaceMemberRepo,
+    auditLogService
 );
 
 const removeMemberUseCase = new RemoveUserFromWorkspace(
-    workspaceMemberRepo
+    workspaceMemberRepo,
+    auditLogService
 );
 
 // 3. Create presenter

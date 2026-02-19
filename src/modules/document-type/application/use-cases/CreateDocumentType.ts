@@ -5,6 +5,8 @@ import { DocumentTypeField } from '../../domain/entities/DocumentTypeField';
 import { FieldType } from '../../domain/enums/FieldType';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Create Document Type Use Case (Application Layer)
@@ -15,6 +17,7 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 
 export interface CreateDocumentTypeInput {
     workspaceId: string;
+    userId: string;
     name: string;
     hasMetadata: boolean;
     hasExpiry: boolean;
@@ -29,7 +32,8 @@ export interface CreateDocumentTypeInput {
 export class CreateDocumentType {
     constructor(
         private readonly documentTypeRepo: IDocumentTypeRepository,
-        private readonly workspaceRepo: IWorkspaceRepository
+        private readonly workspaceRepo: IWorkspaceRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(input: CreateDocumentTypeInput): Promise<{ documentType: DocumentType; fields: DocumentTypeField[] }> {
@@ -105,6 +109,15 @@ export class CreateDocumentType {
         if (!result) {
             throw new Error('Failed to retrieve created document type');
         }
+
+        // 11. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: input.workspaceId,
+            userId: input.userId,
+            action: AuditAction.DOCUMENT_TYPE_CREATED,
+            targetType: 'DocumentType',
+            targetId: createdDocType.id,
+        });
 
         return result;
     }

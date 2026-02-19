@@ -67,4 +67,9 @@ export interface IDocumentRepository {
      * Count expiring documents in a workspace (for overview)
      */
     countExpiringDocuments(workspaceId: string, daysThreshold: number): Promise<number>;
+
+    /**
+     * Count expired documents in a workspace (for overview)
+     */
+    countExpiredDocuments(workspaceId: string): Promise<number>;
 }

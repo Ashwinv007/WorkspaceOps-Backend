@@ -9,6 +9,7 @@ import { WorkItemPriority } from '../../domain/enums/WorkItemPriority';
 
 export interface CreateWorkItemTypeDTO {
     workspaceId: string;
+    userId?: string;
     name: string;
     description?: string;
     entityType?: string;

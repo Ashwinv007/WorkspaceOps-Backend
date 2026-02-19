@@ -1,5 +1,7 @@
 import { IWorkspaceMemberRepository } from '../../domain/repositories/IWorkspaceMemberRepository';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Remove User from Workspace Use Case (Application Layer)
@@ -16,7 +18,8 @@ export interface RemoveUserFromWorkspaceDTO {
 
 export class RemoveUserFromWorkspace {
     constructor(
-        private readonly workspaceMemberRepo: IWorkspaceMemberRepository
+        private readonly workspaceMemberRepo: IWorkspaceMemberRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: RemoveUserFromWorkspaceDTO): Promise<void> {
@@ -40,5 +43,14 @@ export class RemoveUserFromWorkspace {
 
         // 4. Delete the member
         await this.workspaceMemberRepo.delete(dto.memberId);
+
+        // 5. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.removedByUserId,
+            action: AuditAction.WORKSPACE_MEMBER_REMOVED,
+            targetType: 'WorkspaceMember',
+            targetId: dto.memberId,
+        });
     }
 }

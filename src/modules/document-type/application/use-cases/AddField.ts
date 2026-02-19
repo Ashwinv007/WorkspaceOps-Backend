@@ -3,6 +3,8 @@ import { DocumentTypeField } from '../../domain/entities/DocumentTypeField';
 import { FieldType } from '../../domain/enums/FieldType';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Add Field Use Case (Application Layer)
@@ -14,6 +16,7 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 export interface AddFieldInput {
     documentTypeId: string;
     workspaceId: string;
+    userId: string;
     fieldKey: string;
     fieldType: FieldType;
     isRequired: boolean;
@@ -22,7 +25,8 @@ export interface AddFieldInput {
 
 export class AddField {
     constructor(
-        private readonly documentTypeRepo: IDocumentTypeRepository
+        private readonly documentTypeRepo: IDocumentTypeRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(input: AddFieldInput): Promise<DocumentTypeField> {
@@ -83,6 +87,15 @@ export class AddField {
 
         // 7. Add field to document type
         const createdField = await this.documentTypeRepo.addField(input.documentTypeId, fieldData);
+
+        // 8. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: input.workspaceId,
+            userId: input.userId,
+            action: AuditAction.DOCUMENT_TYPE_FIELD_ADDED,
+            targetType: 'DocumentType',
+            targetId: input.documentTypeId,
+        });
 
         return createdField;
     }

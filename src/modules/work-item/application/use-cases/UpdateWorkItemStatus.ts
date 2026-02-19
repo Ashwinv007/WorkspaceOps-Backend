@@ -2,6 +2,8 @@ import { IWorkItemRepository } from '../../domain/repositories/IWorkItemReposito
 import { WorkItem } from '../../domain/entities/WorkItem';
 import { WorkItemStatus } from '../../domain/enums/WorkItemStatus';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * UpdateWorkItemStatus Use Case
@@ -11,9 +13,12 @@ import { NotFoundError, ValidationError } from '../../../../shared/domain/errors
  * Blocked: DRAFT ↔ COMPLETED (must go through ACTIVE)
  */
 export class UpdateWorkItemStatus {
-    constructor(private workItemRepo: IWorkItemRepository) { }
+    constructor(
+        private workItemRepo: IWorkItemRepository,
+        private auditLogService?: IAuditLogService
+    ) { }
 
-    async execute(id: string, workspaceId: string, newStatus: WorkItemStatus): Promise<WorkItem> {
+    async execute(id: string, workspaceId: string, newStatus: WorkItemStatus, userId?: string): Promise<WorkItem> {
         // 1. Validate the status value
         if (!Object.values(WorkItemStatus).includes(newStatus)) {
             throw new ValidationError(
@@ -44,6 +49,17 @@ export class UpdateWorkItemStatus {
         const updated = await this.workItemRepo.updateStatus(id, workspaceId, newStatus);
         if (!updated) {
             throw new NotFoundError('Work item not found');
+        }
+
+        // 6. Audit log (fire-and-forget)
+        if (userId) {
+            await this.auditLogService?.log({
+                workspaceId,
+                userId,
+                action: AuditAction.WORK_ITEM_STATUS_CHANGED,
+                targetType: 'WorkItem',
+                targetId: id,
+            });
         }
 
         return updated;

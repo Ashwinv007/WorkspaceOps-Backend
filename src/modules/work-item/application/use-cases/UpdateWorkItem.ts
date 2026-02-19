@@ -2,6 +2,8 @@ import { IWorkItemRepository } from '../../domain/repositories/IWorkItemReposito
 import { WorkItem } from '../../domain/entities/WorkItem';
 import { UpdateWorkItemDTO } from '../dto/WorkItemDTO';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * UpdateWorkItem Use Case
@@ -12,10 +14,11 @@ import { NotFoundError, ValidationError } from '../../../../shared/domain/errors
 export class UpdateWorkItem {
     constructor(
         private workItemRepo: IWorkItemRepository,
-        private entityRepo: any // IEntityRepository
+        private entityRepo: any, // IEntityRepository
+        private auditLogService?: IAuditLogService
     ) { }
 
-    async execute(id: string, workspaceId: string, dto: UpdateWorkItemDTO): Promise<WorkItem> {
+    async execute(id: string, workspaceId: string, dto: UpdateWorkItemDTO, userId?: string): Promise<WorkItem> {
         // 1. Validate at least one field is being updated
         const hasUpdates = dto.title || dto.description !== undefined || dto.priority || dto.dueDate || dto.entityId;
         if (!hasUpdates) {
@@ -63,6 +66,17 @@ export class UpdateWorkItem {
         const updated = await this.workItemRepo.update(id, workspaceId, updates);
         if (!updated) {
             throw new NotFoundError('Work item not found');
+        }
+
+        // 8. Audit log (fire-and-forget)
+        if (userId) {
+            await this.auditLogService?.log({
+                workspaceId,
+                userId,
+                action: AuditAction.WORK_ITEM_UPDATED,
+                targetType: 'WorkItem',
+                targetId: id,
+            });
         }
 
         return updated;

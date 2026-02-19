@@ -3,6 +3,8 @@ import { IWorkItemTypeRepository } from '../../domain/repositories/IWorkItemType
 import { WorkItem } from '../../domain/entities/WorkItem';
 import { CreateWorkItemDTO } from '../dto/WorkItemDTO';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * CreateWorkItem Use Case
@@ -15,7 +17,8 @@ export class CreateWorkItem {
     constructor(
         private workItemRepo: IWorkItemRepository,
         private workItemTypeRepo: IWorkItemTypeRepository,
-        private entityRepo: any // IEntityRepository
+        private entityRepo: any, // IEntityRepository
+        private auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: CreateWorkItemDTO): Promise<WorkItem> {
@@ -51,6 +54,17 @@ export class CreateWorkItem {
         );
 
         // 5. Persist
-        return this.workItemRepo.create(itemData);
+        const item = await this.workItemRepo.create(itemData);
+
+        // 6. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.assignedToUserId,
+            action: AuditAction.WORK_ITEM_CREATED,
+            targetType: 'WorkItem',
+            targetId: item.id,
+        });
+
+        return item;
     }
 }

@@ -56,6 +56,7 @@ export class DocumentTypeController {
 
             const result = await this.createDocumentTypeUseCase.execute({
                 workspaceId,
+                userId: req.user!.userId,
                 name,
                 hasMetadata: hasMetadata || false,
                 hasExpiry: hasExpiry || false,
@@ -119,6 +120,7 @@ export class DocumentTypeController {
             const result = await this.updateDocumentTypeUseCase.execute({
                 id,
                 workspaceId,
+                userId: req.user!.userId,
                 name,
                 hasMetadata,
                 hasExpiry
@@ -151,6 +153,7 @@ export class DocumentTypeController {
             const field = await this.addFieldUseCase.execute({
                 documentTypeId,
                 workspaceId,
+                userId: req.user!.userId,
                 fieldKey,
                 fieldType: fieldType as FieldType,
                 isRequired: isRequired || false,
@@ -174,7 +177,8 @@ export class DocumentTypeController {
 
             await this.deleteDocumentTypeUseCase.execute({
                 id,
-                workspaceId
+                workspaceId,
+                userId: req.user!.userId
             });
 
             res.status(204).send();

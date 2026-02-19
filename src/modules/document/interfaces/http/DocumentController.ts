@@ -210,7 +210,7 @@ export class DocumentController {
                 entityId: req.body.entityId,
                 metadata: req.body.metadata,
                 expiryDate
-            });
+            }, req.user!.userId);
 
             const baseUrl = `${req.protocol}://${req.get('host')}`;
             res.status(200).json(this.presenter.presentDocument(document, baseUrl));
@@ -232,7 +232,7 @@ export class DocumentController {
             const document = await this.getDocumentByIdUseCase.execute(id, workspaceId);
 
             // Delete from database
-            await this.deleteDocumentUseCase.execute(id, workspaceId);
+            await this.deleteDocumentUseCase.execute(id, workspaceId, req.user!.userId);
 
             // Delete physical file
             await this.fileStorageService.deleteFile(document.fileUrl);

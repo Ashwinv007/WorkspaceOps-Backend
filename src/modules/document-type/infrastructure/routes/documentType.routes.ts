@@ -14,6 +14,9 @@ import { DeleteDocumentType } from '../../application/use-cases/DeleteDocumentTy
 import { DocumentTypeRepositoryImpl } from '../mongoose/DocumentTypeRepositoryImpl';
 import { WorkspaceRepositoryImpl } from '../../../workspace/infrastructure/mongoose/WorkspaceRepositoryImpl';
 
+// Audit log service (cross-cutting)
+import { auditLogService } from '../../../audit-log/infrastructure/routes/auditLog.routes';
+
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
@@ -37,7 +40,8 @@ const workspaceRepo = new WorkspaceRepositoryImpl();
 // 2. Create use cases with injected dependencies
 const createDocumentTypeUseCase = new CreateDocumentType(
     documentTypeRepo,
-    workspaceRepo
+    workspaceRepo,
+    auditLogService
 );
 
 const getDocumentTypesUseCase = new GetDocumentTypes(
@@ -49,15 +53,18 @@ const getDocumentTypeByIdUseCase = new GetDocumentTypeById(
 );
 
 const updateDocumentTypeUseCase = new UpdateDocumentType(
-    documentTypeRepo
+    documentTypeRepo,
+    auditLogService
 );
 
 const addFieldUseCase = new AddField(
-    documentTypeRepo
+    documentTypeRepo,
+    auditLogService
 );
 
 const deleteDocumentTypeUseCase = new DeleteDocumentType(
-    documentTypeRepo
+    documentTypeRepo,
+    auditLogService
 );
 
 // 3. Create presenter

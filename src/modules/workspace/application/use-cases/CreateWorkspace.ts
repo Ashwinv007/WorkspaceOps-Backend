@@ -5,6 +5,8 @@ import { Workspace } from '../../domain/entities/Workspace';
 import { WorkspaceMember, WorkspaceRole } from '../../domain/entities/WorkspaceMember';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Create Workspace Use Case (Application Layer)
@@ -23,7 +25,8 @@ export class CreateWorkspace {
     constructor(
         private readonly tenantRepo: ITenantRepository,
         private readonly workspaceRepo: IWorkspaceRepository,
-        private readonly workspaceMemberRepo: IWorkspaceMemberRepository
+        private readonly workspaceMemberRepo: IWorkspaceMemberRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: CreateWorkspaceDTO): Promise<{ workspace: Workspace; membership: WorkspaceMember }> {
@@ -54,6 +57,15 @@ export class CreateWorkspace {
             workspaceId: workspace.id,
             userId: dto.createdByUserId,
             role: 'OWNER' as WorkspaceRole
+        });
+
+        // 5. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: workspace.id,
+            userId: dto.createdByUserId,
+            action: AuditAction.WORKSPACE_CREATED,
+            targetType: 'Workspace',
+            targetId: workspace.id,
         });
 
         return {

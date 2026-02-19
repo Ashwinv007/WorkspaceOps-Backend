@@ -46,6 +46,7 @@ export class EntityController {
 
             const entity = await this.createEntityUseCase.execute({
                 workspaceId,
+                userId: req.user!.userId,
                 name,
                 role: role as EntityRole
             });
@@ -95,6 +96,7 @@ export class EntityController {
             const entity = await this.updateEntityUseCase.execute({
                 id,
                 workspaceId,
+                userId: req.user!.userId,
                 name,
                 role: role as EntityRole | undefined
             });
@@ -116,7 +118,8 @@ export class EntityController {
 
             await this.deleteEntityUseCase.execute({
                 id,
-                workspaceId
+                workspaceId,
+                userId: req.user!.userId
             });
 
             res.status(204).send();

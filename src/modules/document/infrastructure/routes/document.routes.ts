@@ -20,6 +20,9 @@ import { EntityRepositoryImpl } from '../../../entity/infrastructure/mongoose/En
 import { LocalFileStorageService } from '../storage/FileStorageService';
 import { upload } from '../middleware/upload.middleware';
 
+// Audit log service (cross-cutting)
+import { auditLogService } from '../../../audit-log/infrastructure/routes/auditLog.routes';
+
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
@@ -48,7 +51,8 @@ const fileStorageService = new LocalFileStorageService(
 const uploadDocumentUseCase = new UploadDocument(
     documentRepo,
     documentTypeRepo,
-    entityRepo
+    entityRepo,
+    auditLogService
 );
 
 const getDocumentsUseCase = new GetDocuments(documentRepo);
@@ -59,9 +63,9 @@ const getDocumentsByEntityUseCase = new GetDocumentsByEntity(documentRepo);
 
 const getExpiringDocumentsUseCase = new GetExpiringDocuments(documentRepo);
 
-const updateDocumentUseCase = new UpdateDocument(documentRepo);
+const updateDocumentUseCase = new UpdateDocument(documentRepo, auditLogService);
 
-const deleteDocumentUseCase = new DeleteDocument(documentRepo);
+const deleteDocumentUseCase = new DeleteDocument(documentRepo, auditLogService);
 
 // 3. Create presenter
 const presenter = new DocumentPresenter();

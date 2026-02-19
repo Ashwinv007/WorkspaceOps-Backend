@@ -12,6 +12,9 @@ import { DeleteEntity } from '../../application/use-cases/DeleteEntity';
 import { EntityRepositoryImpl } from '../mongoose/EntityRepositoryImpl';
 import { WorkspaceRepositoryImpl } from '../../../workspace/infrastructure/mongoose/WorkspaceRepositoryImpl';
 
+// Audit log service (cross-cutting)
+import { auditLogService } from '../../../audit-log/infrastructure/routes/auditLog.routes';
+
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
@@ -35,7 +38,8 @@ const workspaceRepo = new WorkspaceRepositoryImpl();
 // 2. Create use cases with injected dependencies
 const createEntityUseCase = new CreateEntity(
     entityRepo,
-    workspaceRepo
+    workspaceRepo,
+    auditLogService
 );
 
 const getEntitiesUseCase = new GetEntities(
@@ -43,11 +47,13 @@ const getEntitiesUseCase = new GetEntities(
 );
 
 const updateEntityUseCase = new UpdateEntity(
-    entityRepo
+    entityRepo,
+    auditLogService
 );
 
 const deleteEntityUseCase = new DeleteEntity(
-    entityRepo
+    entityRepo,
+    auditLogService
 );
 
 // 3. Create presenter

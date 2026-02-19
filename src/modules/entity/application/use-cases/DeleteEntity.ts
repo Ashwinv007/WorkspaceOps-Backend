@@ -1,6 +1,8 @@
 import { IEntityRepository } from '../../domain/repositories/IEntityRepository';
 import { NotFoundError, ValidationError, ForbiddenError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Delete Entity Use Case (Application Layer)
@@ -12,11 +14,13 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 export interface DeleteEntityDTO {
     id: string;
     workspaceId: string;
+    userId: string;
 }
 
 export class DeleteEntity {
     constructor(
-        private readonly entityRepo: IEntityRepository
+        private readonly entityRepo: IEntityRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: DeleteEntityDTO): Promise<void> {
@@ -43,5 +47,14 @@ export class DeleteEntity {
 
         // 5. Delete entity
         await this.entityRepo.delete(dto.id);
+
+        // 6. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.userId,
+            action: AuditAction.ENTITY_DELETED,
+            targetType: 'Entity',
+            targetId: dto.id,
+        });
     }
 }

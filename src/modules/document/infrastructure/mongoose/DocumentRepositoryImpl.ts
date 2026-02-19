@@ -117,6 +117,14 @@ export class DocumentRepositoryImpl implements IDocumentRepository {
         });
     }
 
+    async countExpiredDocuments(workspaceId: string): Promise<number> {
+        const now = new Date();
+        return await DocumentModel.countDocuments({
+            workspaceId,
+            expiryDate: { $lt: now }
+        });
+    }
+
     /**
      * Convert Mongoose document to Domain entity
      */

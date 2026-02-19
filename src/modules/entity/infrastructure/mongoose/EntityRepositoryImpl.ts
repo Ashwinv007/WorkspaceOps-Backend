@@ -96,4 +96,11 @@ export class EntityRepositoryImpl implements IEntityRepository {
             throw new NotFoundError('Entity not found');
         }
     }
+
+    /**
+     * Count total entities in a workspace (for overview)
+     */
+    async countByWorkspace(workspaceId: string): Promise<number> {
+        return EntityModel.countDocuments({ workspaceId });
+    }
 }

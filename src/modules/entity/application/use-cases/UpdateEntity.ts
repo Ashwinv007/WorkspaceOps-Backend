@@ -2,6 +2,8 @@ import { IEntityRepository } from '../../domain/repositories/IEntityRepository';
 import { Entity, EntityRole } from '../../domain/entities/Entity';
 import { NotFoundError, ValidationError, ForbiddenError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Update Entity Use Case (Application Layer)
@@ -13,13 +15,15 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 export interface UpdateEntityDTO {
     id: string;
     workspaceId: string;
+    userId: string;
     name?: string;
     role?: EntityRole;
 }
 
 export class UpdateEntity {
     constructor(
-        private readonly entityRepo: IEntityRepository
+        private readonly entityRepo: IEntityRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: UpdateEntityDTO): Promise<Entity> {
@@ -73,6 +77,15 @@ export class UpdateEntity {
 
         // 7. Update entity
         const updatedEntity = await this.entityRepo.update(dto.id, updates);
+
+        // 8. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.userId,
+            action: AuditAction.ENTITY_UPDATED,
+            targetType: 'Entity',
+            targetId: dto.id,
+        });
 
         return updatedEntity;
     }

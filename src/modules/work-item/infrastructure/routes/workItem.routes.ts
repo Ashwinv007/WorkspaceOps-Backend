@@ -23,6 +23,9 @@ import { WorkItemDocumentRepositoryImpl } from '../mongoose/WorkItemDocumentRepo
 import { EntityRepositoryImpl } from '../../../entity/infrastructure/mongoose/EntityRepositoryImpl';
 import { DocumentRepositoryImpl } from '../../../document/infrastructure/mongoose/DocumentRepositoryImpl';
 
+// Audit log service (cross-cutting)
+import { auditLogService } from '../../../audit-log/infrastructure/routes/auditLog.routes';
+
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
@@ -49,20 +52,20 @@ const documentRepo = new DocumentRepositoryImpl();
 // 2. Create use cases with injected dependencies
 
 // Work Item Type use cases
-const createWorkItemTypeUC = new CreateWorkItemType(workItemTypeRepo);
+const createWorkItemTypeUC = new CreateWorkItemType(workItemTypeRepo, auditLogService);
 const getWorkItemTypesUC = new GetWorkItemTypes(workItemTypeRepo);
-const deleteWorkItemTypeUC = new DeleteWorkItemType(workItemTypeRepo, workItemRepo);
+const deleteWorkItemTypeUC = new DeleteWorkItemType(workItemTypeRepo, workItemRepo, auditLogService);
 
 // Work Item use cases
-const createWorkItemUC = new CreateWorkItem(workItemRepo, workItemTypeRepo, entityRepo);
+const createWorkItemUC = new CreateWorkItem(workItemRepo, workItemTypeRepo, entityRepo, auditLogService);
 const getWorkItemsUC = new GetWorkItems(workItemRepo);
 const getWorkItemByIdUC = new GetWorkItemById(workItemRepo);
 const getWorkItemsByEntityUC = new GetWorkItemsByEntity(workItemRepo);
-const updateWorkItemUC = new UpdateWorkItem(workItemRepo, entityRepo);
-const updateWorkItemStatusUC = new UpdateWorkItemStatus(workItemRepo);
-const linkDocumentUC = new LinkDocument(workItemRepo, workItemDocumentRepo, documentRepo);
-const unlinkDocumentUC = new UnlinkDocument(workItemRepo, workItemDocumentRepo);
-const deleteWorkItemUC = new DeleteWorkItem(workItemRepo, workItemDocumentRepo);
+const updateWorkItemUC = new UpdateWorkItem(workItemRepo, entityRepo, auditLogService);
+const updateWorkItemStatusUC = new UpdateWorkItemStatus(workItemRepo, auditLogService);
+const linkDocumentUC = new LinkDocument(workItemRepo, workItemDocumentRepo, documentRepo, auditLogService);
+const unlinkDocumentUC = new UnlinkDocument(workItemRepo, workItemDocumentRepo, auditLogService);
+const deleteWorkItemUC = new DeleteWorkItem(workItemRepo, workItemDocumentRepo, auditLogService);
 
 // 3. Create presenter and controller
 const presenter = new WorkItemPresenter();

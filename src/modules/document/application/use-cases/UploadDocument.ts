@@ -2,6 +2,8 @@ import { IDocumentRepository } from '../../domain/repositories/IDocumentReposito
 import { Document } from '../../domain/entities/Document';
 import { UploadDocumentDTO } from '../dto/DocumentDTO';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * UploadDocument Use Case
@@ -16,7 +18,8 @@ export class UploadDocument {
     constructor(
         private documentRepository: IDocumentRepository,
         private documentTypeRepository: any, // IDocumentTypeRepository
-        private entityRepository?: any // IEntityRepository
+        private entityRepository?: any, // IEntityRepository
+        private auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: UploadDocumentDTO, fileUrl: string): Promise<Document> {
@@ -65,6 +68,15 @@ export class UploadDocument {
 
         // 5. Persist to database
         const createdDocument = await this.documentRepository.create(documentData);
+
+        // 6. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.uploadedBy,
+            action: AuditAction.DOCUMENT_UPLOADED,
+            targetType: 'Document',
+            targetId: createdDocument.id,
+        });
 
         return createdDocument;
     }

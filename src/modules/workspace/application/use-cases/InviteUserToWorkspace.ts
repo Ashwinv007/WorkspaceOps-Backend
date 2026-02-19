@@ -4,6 +4,8 @@ import { IUserRepository } from '../../../auth/domain/repositories/IUserReposito
 import { WorkspaceMember, WorkspaceRole } from '../../domain/entities/WorkspaceMember';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Invite User to Workspace Use Case (Application Layer)
@@ -23,7 +25,8 @@ export class InviteUserToWorkspace {
     constructor(
         private readonly workspaceRepo: IWorkspaceRepository,
         private readonly workspaceMemberRepo: IWorkspaceMemberRepository,
-        private readonly userRepo: IUserRepository
+        private readonly userRepo: IUserRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: InviteUserToWorkspaceDTO): Promise<WorkspaceMember> {
@@ -70,6 +73,15 @@ export class InviteUserToWorkspace {
             workspaceId: dto.workspaceId,
             userId: dto.invitedUserId,
             role: dto.role
+        });
+
+        // 8. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.invitedByUserId,
+            action: AuditAction.WORKSPACE_MEMBER_INVITED,
+            targetType: 'WorkspaceMember',
+            targetId: membership.id,
         });
 
         return membership;

@@ -31,4 +31,9 @@ export interface IEntityRepository {
      * Delete entity
      */
     delete(id: string): Promise<void>;
+
+    /**
+     * Count total entities in a workspace (for overview)
+     */
+    countByWorkspace(workspaceId: string): Promise<number>;
 }

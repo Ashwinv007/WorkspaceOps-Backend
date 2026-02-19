@@ -2,6 +2,8 @@ import { IWorkItemTypeRepository } from '../../domain/repositories/IWorkItemType
 import { WorkItemType } from '../../domain/entities/WorkItemType';
 import { CreateWorkItemTypeDTO } from '../dto/WorkItemDTO';
 import { ValidationError } from '../../../../shared/domain/errors/AppError';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * CreateWorkItemType Use Case
@@ -10,7 +12,10 @@ import { ValidationError } from '../../../../shared/domain/errors/AppError';
  * Validates name uniqueness before creation.
  */
 export class CreateWorkItemType {
-    constructor(private workItemTypeRepo: IWorkItemTypeRepository) { }
+    constructor(
+        private workItemTypeRepo: IWorkItemTypeRepository,
+        private auditLogService?: IAuditLogService
+    ) { }
 
     async execute(dto: CreateWorkItemTypeDTO): Promise<WorkItemType> {
         // 1. Check for duplicate name in workspace
@@ -28,6 +33,19 @@ export class CreateWorkItemType {
         );
 
         // 3. Persist
-        return this.workItemTypeRepo.create(typeData);
+        const type = await this.workItemTypeRepo.create(typeData);
+
+        // 4. Audit log (fire-and-forget)
+        if (dto.userId) {
+            await this.auditLogService?.log({
+                workspaceId: dto.workspaceId,
+                userId: dto.userId,
+                action: AuditAction.WORK_ITEM_TYPE_CREATED,
+                targetType: 'WorkItemType',
+                targetId: type.id,
+            });
+        }
+
+        return type;
     }
 }

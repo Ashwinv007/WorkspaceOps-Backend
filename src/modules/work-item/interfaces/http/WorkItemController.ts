@@ -71,6 +71,7 @@ export class WorkItemController {
 
             const dto: CreateWorkItemTypeDTO = {
                 workspaceId: workspaceId as string,
+                userId: (req as any).user.userId,
                 name,
                 description,
                 entityType
@@ -104,7 +105,7 @@ export class WorkItemController {
     async deleteWorkItemType(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { workspaceId, id } = req.params;
-            await this.deleteWorkItemTypeUC.execute(id as string, workspaceId as string);
+            await this.deleteWorkItemTypeUC.execute(id as string, workspaceId as string, (req as any).user.userId);
             res.status(204).send();
         } catch (error) {
             next(error);
@@ -217,7 +218,7 @@ export class WorkItemController {
                 entityId
             };
 
-            const updated = await this.updateWorkItemUC.execute(id as string, workspaceId as string, dto);
+            const updated = await this.updateWorkItemUC.execute(id as string, workspaceId as string, dto, (req as any).user.userId);
             res.json(this.presenter.presentWorkItem(updated));
         } catch (error) {
             next(error);
@@ -233,7 +234,7 @@ export class WorkItemController {
             const { workspaceId, id } = req.params;
             const { status } = req.body;
 
-            const updated = await this.updateWorkItemStatusUC.execute(id as string, workspaceId as string, status as WorkItemStatus);
+            const updated = await this.updateWorkItemStatusUC.execute(id as string, workspaceId as string, status as WorkItemStatus, (req as any).user.userId);
             res.json(this.presenter.presentWorkItem(updated));
         } catch (error) {
             next(error);
@@ -249,7 +250,7 @@ export class WorkItemController {
             const { workspaceId, id } = req.params;
             const { documentId } = req.body;
 
-            const link = await this.linkDocumentUC.execute(id as string, workspaceId as string, documentId);
+            const link = await this.linkDocumentUC.execute(id as string, workspaceId as string, documentId, (req as any).user.userId);
             res.json(this.presenter.presentWorkItemDocument(link));
         } catch (error) {
             next(error);
@@ -263,7 +264,7 @@ export class WorkItemController {
     async unlinkDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { workspaceId, id, docId } = req.params;
-            await this.unlinkDocumentUC.execute(id as string, workspaceId as string, docId as string);
+            await this.unlinkDocumentUC.execute(id as string, workspaceId as string, docId as string, (req as any).user.userId);
             res.status(204).send();
         } catch (error) {
             next(error);
@@ -296,7 +297,7 @@ export class WorkItemController {
     async deleteWorkItem(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const { workspaceId, id } = req.params;
-            await this.deleteWorkItemUC.execute(id as string, workspaceId as string);
+            await this.deleteWorkItemUC.execute(id as string, workspaceId as string, (req as any).user.userId);
             res.status(204).send();
         } catch (error) {
             next(error);

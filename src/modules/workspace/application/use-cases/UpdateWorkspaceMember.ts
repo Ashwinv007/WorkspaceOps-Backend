@@ -1,6 +1,8 @@
 import { IWorkspaceMemberRepository } from '../../domain/repositories/IWorkspaceMemberRepository';
 import { WorkspaceMember, WorkspaceRole } from '../../domain/entities/WorkspaceMember';
 import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
+import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Update Workspace Member Use Case (Application Layer)
@@ -18,7 +20,8 @@ export interface UpdateWorkspaceMemberDTO {
 
 export class UpdateWorkspaceMember {
     constructor(
-        private readonly workspaceMemberRepo: IWorkspaceMemberRepository
+        private readonly workspaceMemberRepo: IWorkspaceMemberRepository,
+        private readonly auditLogService?: IAuditLogService
     ) { }
 
     async execute(dto: UpdateWorkspaceMemberDTO): Promise<WorkspaceMember> {
@@ -56,6 +59,15 @@ export class UpdateWorkspaceMember {
         const updatedMember = await this.workspaceMemberRepo.update(dto.memberId, {
             role: dto.newRole
         } as Partial<WorkspaceMember>);
+
+        // 5. Audit log (fire-and-forget)
+        await this.auditLogService?.log({
+            workspaceId: dto.workspaceId,
+            userId: dto.updatedByUserId,
+            action: AuditAction.WORKSPACE_MEMBER_ROLE_UPDATED,
+            targetType: 'WorkspaceMember',
+            targetId: dto.memberId,
+        });
 
         return updatedMember;
     }

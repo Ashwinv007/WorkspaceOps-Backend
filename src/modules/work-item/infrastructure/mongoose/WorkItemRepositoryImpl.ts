@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { IWorkItemRepository } from '../../domain/repositories/IWorkItemRepository';
 import { WorkItem } from '../../domain/entities/WorkItem';
 import { WorkItemStatus } from '../../domain/enums/WorkItemStatus';
@@ -109,5 +110,20 @@ export class WorkItemRepositoryImpl implements IWorkItemRepository {
 
     async countByWorkspace(workspaceId: string): Promise<number> {
         return WorkItemModel.countDocuments({ workspaceId });
+    }
+
+    async countByStatusGrouped(workspaceId: string): Promise<{ DRAFT: number; ACTIVE: number; COMPLETED: number }> {
+        const results = await WorkItemModel.aggregate([
+            { $match: { workspaceId: new mongoose.Types.ObjectId(workspaceId) } },
+            { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+
+        const counts = { DRAFT: 0, ACTIVE: 0, COMPLETED: 0 };
+        for (const r of results) {
+            if (r._id in counts) {
+                counts[r._id as keyof typeof counts] = r.count;
+            }
+        }
+        return counts;
     }
 }

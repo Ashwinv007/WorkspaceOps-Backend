@@ -4,6 +4,7 @@ import workspaceRoutes from './modules/workspace/infrastructure/routes/workspace
 import entityRoutes from './modules/entity/infrastructure/routes/entity.routes';
 import documentTypeRoutes from './modules/document-type/infrastructure/routes/documentType.routes';
 import documentRoutes from './modules/document/infrastructure/routes/document.routes';
+import workItemRoutes from './modules/work-item/infrastructure/routes/workItem.routes';
 import { errorHandler } from './shared/interfaces/middleware/errorHandler';
 
 const app = express();
@@ -21,6 +22,7 @@ app.use('/workspaces', workspaceRoutes);
 app.use(entityRoutes); // Entity routes are nested under /workspaces/:workspaceId/entities
 app.use(documentTypeRoutes); // Document type routes are nested under /workspaces/:workspaceId/document-types
 app.use(documentRoutes); // Document routes are nested under /workspaces/:workspaceId/documents
+app.use(workItemRoutes); // Work item routes are nested under /workspaces/:workspaceId/work-item-types & work-items
 
 
 

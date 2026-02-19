@@ -1,0 +1,146 @@
+###
+# Work Item Types
+###
+
+# Create Work Item Type
+POST {{baseUrl}}/workspaces/{{workspaceId}}/work-item-types
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Feature Request",
+    "description": "New product features requested by customers",
+    "entityType": "CUSTOMER"
+}
+
+###
+
+# Get Work Item Types
+GET {{baseUrl}}/workspaces/{{workspaceId}}/work-item-types
+Authorization: Bearer {{token}}
+
+###
+
+# Create another type
+POST {{baseUrl}}/workspaces/{{workspaceId}}/work-item-types
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Internal Task",
+    "description": "Internal team tasks",
+    "entityType": "EMPLOYEE"
+}
+
+###
+
+# Delete Work Item Type
+# @name deleteType
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/work-item-types/{{id}}
+Authorization: Bearer {{token}}
+
+
+###
+# Work Items
+###
+
+# Create Work Item (Happy Path)
+POST {{baseUrl}}/workspaces/{{workspaceId}}/work-items
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "workItemTypeId": "{{workItemTypeId}}",
+    "entityId": "{{entityId}}",
+    "title": "Implement Login Flow",
+    "description": "Complete the JWT authentication implementation",
+    "priority": "HIGH",
+    "dueDate": "2024-12-31T23:59:59Z"
+}
+
+###
+
+# Get Work Items (List)
+GET {{baseUrl}}/workspaces/{{workspaceId}}/work-items
+Authorization: Bearer {{token}}
+
+###
+
+# Get Work Items (Filtered)
+GET {{baseUrl}}/workspaces/{{workspaceId}}/work-items?status=DRAFT&priority=HIGH
+Authorization: Bearer {{token}}
+
+###
+
+# Get Work Item By ID
+GET {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}
+Authorization: Bearer {{token}}
+
+###
+
+# Update Work Item Fields
+PUT {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "title": "Implement Login Flow (Updated)",
+    "priority": "MEDIUM"
+}
+
+###
+
+# Update Status (DRAFT -> ACTIVE)
+PATCH {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "ACTIVE"
+}
+
+###
+
+# Update Status (ACTIVE -> COMPLETED)
+PATCH {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "COMPLETED"
+}
+
+###
+
+# Link Document
+POST {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}/documents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "documentId": "{{documentId}}"
+}
+
+###
+
+# Get Linked Documents
+GET {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}/documents
+Authorization: Bearer {{token}}
+
+###
+
+# Unlink Document
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}/documents/{{documentId}}
+Authorization: Bearer {{token}}
+
+###
+
+# Get Work Items By Entity
+GET {{baseUrl}}/workspaces/{{workspaceId}}/entities/{{entityId}}/work-items
+Authorization: Bearer {{token}}
+
+###
+
+# Delete Work Item
+DELETE {{baseUrl}}/workspaces/{{workspaceId}}/work-items/{{workItemId}}
+Authorization: Bearer {{token}}

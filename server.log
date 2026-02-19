@@ -1,0 +1,4 @@
+
+> workspaceops-backend@1.0.0 dev
+> ts-node-dev --respawn --transpile-only src/server.ts
+

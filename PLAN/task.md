@@ -1,6 +1,6 @@
 # WorkspaceOps Backend - Task Breakdown
 
-**Last Updated:** February 18, 2026
+**Last Updated:** February 19, 2026
 
 ## Architecture Setup
 - [x] Review and validate Clean Architecture structure
@@ -70,21 +70,58 @@
 - [x] Wire up routes with RBAC (including file download endpoint)
 - [x] Automated testing via `test-document.sh` and `test-document-quick.sh`
 
-### Work Item Module (HLR0021-0025) — NEXT
-- [ ] Create `WorkItemType` domain entity
-- [ ] Create `WorkItem` domain entity with lifecycle states
-- [ ] Create `WorkItemStatus` enum (DRAFT, ACTIVE, COMPLETED)
-- [ ] Implement repository interfaces
-- [ ] Implement use cases (CRUD for types, CRUD + lifecycle for items, document linking)
-- [ ] Implement controllers and presenters
-- [ ] Implement Mongoose models and repositories
-- [ ] Wire up routes with RBAC
-- [ ] Automated testing
+### Work Item Module (HLR0021-0025) ✅
+- [x] Create `WorkItemType` domain entity (with optional entityType restriction)
+- [x] Create `WorkItem` domain entity with bidirectional state machine (DRAFT ↔ ACTIVE ↔ COMPLETED)
+- [x] Create `WorkItemStatus` enum (DRAFT, ACTIVE, COMPLETED)
+- [x] Create `WorkItemPriority` enum (LOW, MEDIUM, HIGH)
+- [x] Create `WorkItemDocument` entity (linking table)
+- [x] Implement 3 repository interfaces (`IWorkItemRepository`, `IWorkItemTypeRepository`, `IWorkItemDocumentRepository`)
+- [x] Implement 12 use cases (3 type + 9 item + 2 document linking)
+- [x] Implement `WorkItemController` (13 endpoints) and `WorkItemPresenter`
+- [x] Implement 3 Mongoose models and 3 repository implementations
+- [x] Wire up routes with RBAC middleware
+- [x] Register routes in `app.ts`
+- [x] Automated testing via `test-work-item.sh` + HTTP tests (`test-work-item.http`)
 
-### Audit Logging (HLR0026-0027)
-- [ ] Create `AuditLog` domain entity with action types
-- [ ] Implement audit service and middleware
-- [ ] Integrate audit logging across modules
+### Audit Log Module (HLR0026-0027) — ⬜ NEXT
+
+#### Phase 1: Domain Layer
+- [ ] Create `AuditAction` enum (actions for all 6 modules)
+- [ ] Create `AuditLog` domain entity
+- [ ] Create `IAuditLogRepository` interface
+
+#### Phase 2: Application Layer
+- [ ] Create `IAuditLogService` interface (used by all use cases)
+- [ ] Create `AuditLogDTO` types
+- [ ] Create `GetAuditLogs` use case (with filters + pagination)
+
+#### Phase 3: Infrastructure Layer
+- [ ] Create `AuditLogModel` (Mongoose with compound indexes)
+- [ ] Create `AuditLogRepositoryImpl`
+- [ ] Create `AuditLogServiceImpl` (silent failure on log error)
+
+#### Phase 4: Interfaces Layer
+- [ ] Create `AuditLogController` (GET endpoint, Admin only)
+- [ ] Create `AuditLogPresenter`
+- [ ] Create `auditLog.routes.ts`
+- [ ] Register in `app.ts`
+
+#### Phase 5: Integration (inject into existing use cases)
+- [ ] Update Entity use cases (`CreateEntity`, `UpdateEntity`, `DeleteEntity`)
+- [ ] Update Document Type use cases (4 use cases)
+- [ ] Update Document use cases (`UploadDocument`, `UpdateDocument`, `DeleteDocument`)
+- [ ] Update Work Item use cases (8 use cases)
+- [ ] Update Workspace use cases (3 use cases)
+- [ ] Update route files to wire `auditLogService` into use cases
+
+#### Phase 6: Testing
+- [ ] Create `test-audit-log.sh` automated test
+- [ ] Create `test-audit-log.http` HTTP test file
+- [ ] Test write operations generate audit logs
+- [ ] Test GET with all filters (actor, action, dateRange)
+- [ ] Test RBAC (Admin can see, Member cannot)
+- [ ] Test audit failure does not break main operation
 
 ### Overview/Dashboard (HLR0028-0029)
 - [ ] Implement `GetWorkspaceOverview` use case (aggregations)
@@ -105,8 +142,9 @@
 - [x] Automated testing for Document Type module
 - [x] Automated testing for Document module
 - [x] Verify RBAC enforcement across all modules
-- [ ] Automated testing for Work Item module
-- [ ] Test work item lifecycle transitions
+- [x] Automated testing for Work Item module (`test-work-item.sh`)
+- [x] Test work item lifecycle transitions (DRAFT↔ACTIVE↔COMPLETED)
+- [ ] Automated testing for Audit Log module
 - [ ] End-to-end integration testing
 
 ## Documentation ✅

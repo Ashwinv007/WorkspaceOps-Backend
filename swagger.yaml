@@ -1,0 +1,1869 @@
+openapi: 3.0.3
+info:
+  title: WorkspaceOps API
+  version: 1.0.0
+  description: |
+    Multi-tenant workspace management API. Handles workspaces, entities, documents,
+    work items, and audit logging.
+
+    ## Authentication
+    All endpoints (except `/auth/signup` and `/auth/login`) require a Bearer JWT token
+    in the `Authorization` header:
+    ```
+    Authorization: Bearer <token>
+    ```
+    You get the token from the login or signup response.
+
+    ## Roles & Permissions
+    | Role     | Description                                        |
+    |----------|----------------------------------------------------|
+    | OWNER    | Full control of the workspace                      |
+    | ADMIN    | Manage members, types, entities, documents         |
+    | MEMBER   | Create and read most resources                     |
+    | VIEWER   | Read-only (not yet enforced in current routes)     |
+
+    Endpoint descriptions state the minimum required role.
+
+    ## Common Status Codes
+    | Code | Meaning                        |
+    |------|-------------------------------|
+    | 200  | OK                             |
+    | 201  | Created                        |
+    | 204  | No Content (delete responses)  |
+    | 400  | Bad Request / Validation error |
+    | 401  | Unauthorized (missing/invalid token) |
+    | 403  | Forbidden (insufficient role) |
+    | 404  | Resource not found            |
+    | 409  | Conflict (duplicate resource) |
+    | 500  | Internal Server Error         |
+
+servers:
+  - url: http://localhost:4000
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Authentication — no token required
+  - name: Workspaces
+    description: Workspace management and member control
+  - name: Entities
+    description: Entity management within a workspace
+  - name: Document Types
+    description: Document type schema and field management
+  - name: Documents
+    description: Document upload, retrieval, and management
+  - name: Work Item Types
+    description: Work item type/category management
+  - name: Work Items
+    description: Work item lifecycle and document linking
+  - name: Audit Logs
+    description: Audit trail (Admin only)
+  - name: Overview
+    description: Workspace dashboard summary data
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT token from /auth/login or /auth/signup"
+
+  parameters:
+    workspaceId:
+      name: workspaceId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Workspace ID
+    pathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Resource ID
+    memberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Workspace member record ID
+    entityId:
+      name: entityId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Entity ID
+    docId:
+      name: docId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Document ID (for unlink operations)
+
+  schemas:
+    # ── Shared ──────────────────────────────────────────────────────────────────
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Resource not found"
+
+    # ── Auth ─────────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "64f1a2b3c4d5e6f7a8b9c0d1"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        name:
+          type: string
+          example: "John Doe"
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: JWT access token — include this in Authorization header for all subsequent requests
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    # ── Workspace ────────────────────────────────────────────────────────────────
+    WorkspaceRole:
+      type: string
+      enum: [OWNER, ADMIN, MEMBER, VIEWER]
+
+    Workspace:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "ws_abc123"
+        tenantId:
+          type: string
+          example: "tenant_xyz"
+        name:
+          type: string
+          example: "Acme HQ"
+        createdAt:
+          type: string
+          format: date-time
+
+    WorkspaceWithRole:
+      allOf:
+        - $ref: '#/components/schemas/Workspace'
+        - type: object
+          properties:
+            role:
+              $ref: '#/components/schemas/WorkspaceRole'
+
+    WorkspaceMember:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        userId:
+          type: string
+        role:
+          $ref: '#/components/schemas/WorkspaceRole'
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── Entity ───────────────────────────────────────────────────────────────────
+    EntityRole:
+      type: string
+      enum: [SELF, CUSTOMER, EMPLOYEE, VENDOR]
+      description: |
+        - **SELF**: The workspace owner's own organization
+        - **CUSTOMER**: A client or customer
+        - **EMPLOYEE**: A staff member
+        - **VENDOR**: A supplier or vendor
+
+    Entity:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        name:
+          type: string
+          example: "Acme Corp"
+        role:
+          $ref: '#/components/schemas/EntityRole'
+        createdAt:
+          type: string
+          format: date-time
+
+    EntityListResponse:
+      type: object
+      properties:
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entity'
+        count:
+          type: integer
+          example: 12
+
+    # ── Document Type ─────────────────────────────────────────────────────────────
+    FieldType:
+      type: string
+      enum: [text, date]
+      description: "Must be lowercase: 'text' or 'date'"
+
+    DocumentTypeField:
+      type: object
+      properties:
+        id:
+          type: string
+        documentTypeId:
+          type: string
+        fieldKey:
+          type: string
+          example: "passport_number"
+          description: Alphanumeric + underscore only, max 100 chars
+        fieldType:
+          $ref: '#/components/schemas/FieldType'
+        isRequired:
+          type: boolean
+          example: true
+        isExpiryField:
+          type: boolean
+          example: false
+          description: If true, this date field is used to calculate expiry status
+
+    DocumentType:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        name:
+          type: string
+          example: "Passport"
+        hasMetadata:
+          type: boolean
+          description: Whether this document type has additional metadata fields
+        hasExpiry:
+          type: boolean
+          description: Whether documents of this type have an expiry date
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentTypeField'
+        createdAt:
+          type: string
+          format: date-time
+
+    DocumentTypeCreatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/DocumentType'
+
+    # ── Document ──────────────────────────────────────────────────────────────────
+    DocumentStatus:
+      type: string
+      enum: [VALID, EXPIRING, EXPIRED]
+      description: |
+        - **VALID**: Expiry date is > 30 days away (or no expiry)
+        - **EXPIRING**: Expiry date is within 30 days
+        - **EXPIRED**: Expiry date is in the past
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        documentTypeId:
+          type: string
+        entityId:
+          type: string
+          nullable: true
+          description: The entity this document belongs to (optional)
+        fileName:
+          type: string
+          example: "passport_john_doe.pdf"
+        fileUrl:
+          type: string
+          description: Internal file path/URL on server
+        downloadUrl:
+          type: string
+          description: URL to use for downloading the file (use GET /documents/:id/download)
+        mimeType:
+          type: string
+          example: "application/pdf"
+          nullable: true
+        fileSize:
+          type: integer
+          description: File size in bytes
+          example: 204800
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Key-value pairs matching the document type's fields
+          example:
+            passport_number: "AB1234567"
+            issue_country: "India"
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2029-06-30"
+        expiryStatus:
+          $ref: '#/components/schemas/DocumentStatus'
+        uploadedBy:
+          type: string
+          description: User ID of the uploader
+        createdAt:
+          type: string
+          format: date-time
+
+    DocumentListResponse:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        count:
+          type: integer
+
+    # ── Work Item Type ────────────────────────────────────────────────────────────
+    WorkItemType:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        name:
+          type: string
+          example: "Employee Onboarding"
+        description:
+          type: string
+          nullable: true
+          example: "Tasks for onboarding new employees"
+        entityType:
+          type: string
+          enum: [SELF, CUSTOMER, EMPLOYEE, VENDOR]
+          nullable: true
+          description: Optional — if set, this type applies only to entities of this role
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── Work Item ─────────────────────────────────────────────────────────────────
+    WorkItemStatus:
+      type: string
+      enum: [DRAFT, ACTIVE, COMPLETED]
+      description: |
+        Valid transitions:
+        - DRAFT → ACTIVE
+        - ACTIVE → COMPLETED
+        - COMPLETED → ACTIVE (reopen)
+        - ACTIVE → DRAFT (unstart)
+        - DRAFT → COMPLETED is **invalid**
+        - COMPLETED → DRAFT is **invalid**
+
+    WorkItemPriority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH]
+
+    WorkItem:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        workItemTypeId:
+          type: string
+        entityId:
+          type: string
+        assignedToUserId:
+          type: string
+        title:
+          type: string
+          example: "Collect Passport Documents"
+        description:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/WorkItemStatus'
+        priority:
+          $ref: '#/components/schemas/WorkItemPriority'
+          nullable: true
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    WorkItemWithLinks:
+      allOf:
+        - $ref: '#/components/schemas/WorkItem'
+        - type: object
+          properties:
+            linkedDocumentIds:
+              type: array
+              items:
+                type: string
+              description: IDs of documents linked to this work item
+
+    WorkItemDocument:
+      type: object
+      description: Junction record linking a work item to a document
+      properties:
+        id:
+          type: string
+        workItemId:
+          type: string
+        documentId:
+          type: string
+        linkedAt:
+          type: string
+          format: date-time
+
+    # ── Audit Log ─────────────────────────────────────────────────────────────────
+    AuditAction:
+      type: string
+      enum:
+        - USER_SIGNUP
+        - USER_LOGIN
+        - WORKSPACE_CREATED
+        - WORKSPACE_MEMBER_INVITED
+        - WORKSPACE_MEMBER_REMOVED
+        - WORKSPACE_MEMBER_ROLE_UPDATED
+        - ENTITY_CREATED
+        - ENTITY_UPDATED
+        - ENTITY_DELETED
+        - DOCUMENT_TYPE_CREATED
+        - DOCUMENT_TYPE_UPDATED
+        - DOCUMENT_TYPE_DELETED
+        - DOCUMENT_TYPE_FIELD_ADDED
+        - DOCUMENT_UPLOADED
+        - DOCUMENT_UPDATED
+        - DOCUMENT_DELETED
+        - WORK_ITEM_TYPE_CREATED
+        - WORK_ITEM_TYPE_DELETED
+        - WORK_ITEM_CREATED
+        - WORK_ITEM_UPDATED
+        - WORK_ITEM_STATUS_CHANGED
+        - WORK_ITEM_DELETED
+        - WORK_ITEM_DOCUMENT_LINKED
+        - WORK_ITEM_DOCUMENT_UNLINKED
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        userId:
+          type: string
+          description: ID of the user who performed the action
+        action:
+          $ref: '#/components/schemas/AuditAction'
+        targetType:
+          type: string
+          example: "WorkItem"
+          description: Resource type that was affected
+        targetId:
+          type: string
+          nullable: true
+          description: ID of the affected resource
+        createdAt:
+          type: string
+          format: date-time
+
+    AuditLogListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total matching records (for pagination)
+        limit:
+          type: integer
+        offset:
+          type: integer
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+
+    # ── Overview ──────────────────────────────────────────────────────────────────
+    Overview:
+      type: object
+      properties:
+        workspaceId:
+          type: string
+        entities:
+          type: object
+          properties:
+            total:
+              type: integer
+            byRole:
+              type: object
+              properties:
+                SELF:
+                  type: integer
+                CUSTOMER:
+                  type: integer
+                EMPLOYEE:
+                  type: integer
+                VENDOR:
+                  type: integer
+        documents:
+          type: object
+          properties:
+            total:
+              type: integer
+            byStatus:
+              type: object
+              properties:
+                VALID:
+                  type: integer
+                EXPIRING:
+                  type: integer
+                EXPIRED:
+                  type: integer
+        workItems:
+          type: object
+          properties:
+            total:
+              type: integer
+            byStatus:
+              type: object
+              properties:
+                DRAFT:
+                  type: integer
+                ACTIVE:
+                  type: integer
+                COMPLETED:
+                  type: integer
+        documentTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentType'
+        workItemTypes:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkItemType'
+
+# ════════════════════════════════════════════════════════════════════════════════
+# PATHS
+# ════════════════════════════════════════════════════════════════════════════════
+paths:
+
+  # ── Auth ──────────────────────────────────────────────────────────────────────
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                name:
+                  type: string
+            example:
+              email: "john@example.com"
+              password: "secret123"
+              name: "John Doe"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error (invalid email, password too short)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+            example:
+              email: "john@example.com"
+              password: "secret123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── Workspaces ────────────────────────────────────────────────────────────────
+  /workspaces:
+    post:
+      tags: [Workspaces]
+      summary: Create a new workspace
+      description: The authenticated user automatically becomes the **OWNER**.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, name]
+              properties:
+                tenantId:
+                  type: string
+                  description: Tenant/organization identifier
+                name:
+                  type: string
+                  description: Human-readable workspace name
+            example:
+              tenantId: "tenant_abc123"
+              name: "Acme HQ"
+      responses:
+        '201':
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceWithRole'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Workspaces]
+      summary: Get all workspaces for the current user
+      description: Returns every workspace the authenticated user is a member of, including their role.
+      responses:
+        '200':
+          description: List of workspaces with user's role in each
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkspaceWithRole'
+
+  /workspaces/{id}/members:
+    post:
+      tags: [Workspaces]
+      summary: Invite a user to the workspace
+      description: Requires **ADMIN** or **OWNER** role. The user must already exist in the system.
+      parameters:
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invitedUserId, role]
+              properties:
+                invitedUserId:
+                  type: string
+                  description: ID of the existing user to invite
+                role:
+                  $ref: '#/components/schemas/WorkspaceRole'
+            example:
+              invitedUserId: "64f1a2b3c4d5e6f7a8b9c0d2"
+              role: "MEMBER"
+      responses:
+        '201':
+          description: User invited and workspace member record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceMember'
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Workspace or user not found
+        '409':
+          description: User is already a member of this workspace
+
+  /workspaces/{id}/members/{memberId}:
+    put:
+      tags: [Workspaces]
+      summary: Update a member's role
+      description: Requires **ADMIN** or **OWNER** role.
+      parameters:
+        - $ref: '#/components/parameters/pathId'
+        - $ref: '#/components/parameters/memberId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  $ref: '#/components/schemas/WorkspaceRole'
+            example:
+              role: "ADMIN"
+      responses:
+        '200':
+          description: Member role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceMember'
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Member not found
+
+    delete:
+      tags: [Workspaces]
+      summary: Remove a member from the workspace
+      description: Requires **ADMIN** or **OWNER** role.
+      parameters:
+        - $ref: '#/components/parameters/pathId'
+        - $ref: '#/components/parameters/memberId'
+      responses:
+        '200':
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Member removed successfully"
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Member not found
+
+  # ── Entities ──────────────────────────────────────────────────────────────────
+  /workspaces/{workspaceId}/entities:
+    post:
+      tags: [Entities]
+      summary: Create an entity
+      description: Requires **MEMBER** role or higher. Entities represent people or organizations (customers, employees, vendors, etc.)
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, role]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                role:
+                  $ref: '#/components/schemas/EntityRole'
+            example:
+              name: "Acme Corp"
+              role: "CUSTOMER"
+      responses:
+        '201':
+          description: Entity created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '400':
+          description: Validation error
+
+    get:
+      tags: [Entities]
+      summary: Get all entities in a workspace
+      description: Requires **MEMBER** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      responses:
+        '200':
+          description: List of entities with total count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityListResponse'
+
+  /workspaces/{workspaceId}/entities/{id}:
+    put:
+      tags: [Entities]
+      summary: Update an entity
+      description: Requires **MEMBER** role or higher. All fields are optional — only send what you want to change.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                role:
+                  $ref: '#/components/schemas/EntityRole'
+            example:
+              name: "Acme Corporation"
+      responses:
+        '200':
+          description: Updated entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '404':
+          description: Entity not found
+
+    delete:
+      tags: [Entities]
+      summary: Delete an entity
+      description: Requires **ADMIN** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '204':
+          description: Entity deleted (no response body)
+        '404':
+          description: Entity not found
+
+  # ── Document Types ────────────────────────────────────────────────────────────
+  /workspaces/{workspaceId}/document-types:
+    post:
+      tags: [Document Types]
+      summary: Create a document type
+      description: |
+        Requires **ADMIN** role or higher.
+
+        A document type defines the schema for documents uploaded under it.
+
+        **Business rules:**
+        - If `hasMetadata: true`, you must provide at least one item in `fields[]`
+        - If `hasExpiry: true`, at least one field must have `isExpiryField: true` and `fieldType: "date"`
+        - Field types must be lowercase: `"text"` or `"date"`
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                hasMetadata:
+                  type: boolean
+                  default: false
+                  description: Does this document type require extra metadata fields?
+                hasExpiry:
+                  type: boolean
+                  default: false
+                  description: Do documents of this type expire?
+                fields:
+                  type: array
+                  description: Required if hasMetadata or hasExpiry is true
+                  items:
+                    type: object
+                    required: [fieldKey, fieldType]
+                    properties:
+                      fieldKey:
+                        type: string
+                        maxLength: 100
+                        description: Identifier key (alphanumeric + underscore)
+                      fieldType:
+                        $ref: '#/components/schemas/FieldType'
+                      isRequired:
+                        type: boolean
+                        default: false
+                      isExpiryField:
+                        type: boolean
+                        default: false
+                        description: If true, this date field determines document expiry
+            example:
+              name: "Passport"
+              hasMetadata: true
+              hasExpiry: true
+              fields:
+                - fieldKey: "passport_number"
+                  fieldType: "text"
+                  isRequired: true
+                  isExpiryField: false
+                - fieldKey: "expiry_date"
+                  fieldType: "date"
+                  isRequired: true
+                  isExpiryField: true
+      responses:
+        '201':
+          description: Document type created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentTypeCreatedResponse'
+        '400':
+          description: Validation error (e.g., hasMetadata=true but no fields provided)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Document Types]
+      summary: Get all document types in a workspace
+      description: Requires **MEMBER** role or higher. Includes all fields for each type.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      responses:
+        '200':
+          description: Array of document types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentType'
+
+  /workspaces/{workspaceId}/document-types/{id}:
+    get:
+      tags: [Document Types]
+      summary: Get a document type by ID
+      description: Requires **MEMBER** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '200':
+          description: Document type with its fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+        '404':
+          description: Not found
+
+    put:
+      tags: [Document Types]
+      summary: Update a document type
+      description: Requires **ADMIN** role or higher. Updates name and/or flags only — use POST /fields to add fields.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                hasMetadata:
+                  type: boolean
+                hasExpiry:
+                  type: boolean
+            example:
+              name: "National Passport"
+              hasExpiry: true
+      responses:
+        '200':
+          description: Updated document type (with existing fields)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+        '404':
+          description: Not found
+
+    delete:
+      tags: [Document Types]
+      summary: Delete a document type
+      description: Requires **ADMIN** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '204':
+          description: Deleted (no response body)
+        '404':
+          description: Not found
+
+  /workspaces/{workspaceId}/document-types/{id}/fields:
+    post:
+      tags: [Document Types]
+      summary: Add a field to a document type
+      description: |
+        Requires **ADMIN** role or higher.
+
+        **Business rule:** If `isExpiryField: true`, `fieldType` must be `"date"`.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fieldKey, fieldType]
+              properties:
+                fieldKey:
+                  type: string
+                  maxLength: 100
+                  description: Alphanumeric + underscore only
+                fieldType:
+                  $ref: '#/components/schemas/FieldType'
+                isRequired:
+                  type: boolean
+                  default: false
+                isExpiryField:
+                  type: boolean
+                  default: false
+            example:
+              fieldKey: "issue_country"
+              fieldType: "text"
+              isRequired: false
+              isExpiryField: false
+      responses:
+        '201':
+          description: Field added to the document type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentTypeField'
+        '400':
+          description: Validation error (e.g., isExpiryField=true but fieldType is not "date")
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Document type not found
+
+  # ── Documents ─────────────────────────────────────────────────────────────────
+  /workspaces/{workspaceId}/documents:
+    post:
+      tags: [Documents]
+      summary: Upload a document
+      description: |
+        Requires **MEMBER** role or higher.
+
+        Uses `multipart/form-data`. The actual file must be sent as the `file` field.
+
+        **Notes on metadata:**
+        - `metadata` should be a JSON **string** (not an object) when sent as form data
+        - The metadata keys should match the document type's `fieldKey` values
+        - `expiryDate` format: `YYYY-MM-DD`
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, documentTypeId]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The document file (PDF, image, etc.)
+                documentTypeId:
+                  type: string
+                  description: ID of the document type this file belongs to
+                entityId:
+                  type: string
+                  description: Optional — associate this document with an entity
+                metadata:
+                  type: string
+                  description: JSON string of metadata key-value pairs
+                  example: '{"passport_number":"AB1234567","expiry_date":"2029-06-30"}'
+                expiryDate:
+                  type: string
+                  format: date
+                  description: Document expiry date (YYYY-MM-DD)
+                  example: "2029-06-30"
+      responses:
+        '201':
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          description: No file provided, or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Document type or entity not found
+
+    get:
+      tags: [Documents]
+      summary: Get documents in a workspace
+      description: Requires **MEMBER** role or higher. Filter by document type or entity.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - name: documentTypeId
+          in: query
+          schema:
+            type: string
+          description: Filter by document type ID
+        - name: entityId
+          in: query
+          schema:
+            type: string
+          description: Filter by entity ID
+      responses:
+        '200':
+          description: Document list with count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+
+  /workspaces/{workspaceId}/documents/expiring:
+    get:
+      tags: [Documents]
+      summary: Get expiring and expired documents
+      description: |
+        Requires **MEMBER** role or higher.
+
+        Returns documents whose `expiryDate` is within the next `days` days, or already past.
+        Useful for building expiry alerts/dashboards.
+
+        **Note:** This route must be called before `/documents/{id}` to avoid path conflicts.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 30
+            minimum: 1
+          description: Threshold — documents expiring within this many days are returned (default 30)
+      responses:
+        '200':
+          description: Array of expiring/expired documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+
+  /workspaces/{workspaceId}/documents/{id}:
+    get:
+      tags: [Documents]
+      summary: Get a document by ID
+      description: Requires **MEMBER** role or higher. Includes computed `expiryStatus` and `downloadUrl`.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '200':
+          description: Document object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '404':
+          description: Document not found
+
+    put:
+      tags: [Documents]
+      summary: Update document metadata or entity association
+      description: Requires **MEMBER** role or higher. Cannot change the file itself — only metadata and associations.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entityId:
+                  type: string
+                  nullable: true
+                  description: Reassign to a different entity, or null to remove association
+                metadata:
+                  type: object
+                  additionalProperties: true
+                  description: Updated metadata key-value pairs
+                expiryDate:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: Updated expiry date (YYYY-MM-DD), or null to remove
+            example:
+              expiryDate: "2030-01-01"
+              metadata:
+                passport_number: "CD9876543"
+      responses:
+        '200':
+          description: Updated document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '404':
+          description: Document not found
+
+    delete:
+      tags: [Documents]
+      summary: Delete a document
+      description: Requires **ADMIN** role or higher. Also removes the file from storage.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '204':
+          description: Deleted (no response body)
+        '404':
+          description: Document not found
+
+  /workspaces/{workspaceId}/documents/{id}/download:
+    get:
+      tags: [Documents]
+      summary: Download a document file
+      description: |
+        Requires **MEMBER** role or higher.
+
+        Returns the raw file as a binary attachment. The browser will trigger a file download.
+        Use this URL in an `<a href>` tag with `download` attribute for frontend download buttons.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '200':
+          description: File stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: 'attachment; filename="originalfilename.pdf"'
+        '404':
+          description: Document or file not found
+
+  /workspaces/{workspaceId}/entities/{entityId}/documents:
+    get:
+      tags: [Documents]
+      summary: Get all documents for a specific entity
+      description: Requires **MEMBER** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/entityId'
+      responses:
+        '200':
+          description: Documents belonging to the entity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+
+  # ── Work Item Types ───────────────────────────────────────────────────────────
+  /workspaces/{workspaceId}/work-item-types:
+    post:
+      tags: [Work Item Types]
+      summary: Create a work item type
+      description: |
+        Requires **ADMIN** role or higher.
+
+        Work item types categorize work items (e.g., "Onboarding", "KYC", "Contract Review").
+        The optional `entityType` field restricts which entities this type applies to.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                description:
+                  type: string
+                  maxLength: 1000
+                entityType:
+                  type: string
+                  enum: [SELF, CUSTOMER, EMPLOYEE, VENDOR]
+                  description: If set, only entities with this role can be associated
+            example:
+              name: "Employee Onboarding"
+              description: "Tasks for onboarding new employees"
+              entityType: "EMPLOYEE"
+      responses:
+        '201':
+          description: Work item type created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItemType'
+        '400':
+          description: Validation error
+
+    get:
+      tags: [Work Item Types]
+      summary: Get all work item types in a workspace
+      description: Requires **MEMBER** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      responses:
+        '200':
+          description: Array of work item types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkItemType'
+
+  /workspaces/{workspaceId}/work-item-types/{id}:
+    delete:
+      tags: [Work Item Types]
+      summary: Delete a work item type
+      description: Requires **ADMIN** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '204':
+          description: Deleted (no response body)
+        '404':
+          description: Work item type not found
+
+  # ── Work Items ────────────────────────────────────────────────────────────────
+  /workspaces/{workspaceId}/work-items:
+    post:
+      tags: [Work Items]
+      summary: Create a work item
+      description: |
+        Requires **MEMBER** role or higher.
+
+        New work items are always created with status **DRAFT**.
+        The `assignedToUserId` is automatically set to the authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workItemTypeId, entityId, title]
+              properties:
+                workItemTypeId:
+                  type: string
+                entityId:
+                  type: string
+                title:
+                  type: string
+                  maxLength: 255
+                description:
+                  type: string
+                  maxLength: 2000
+                priority:
+                  $ref: '#/components/schemas/WorkItemPriority'
+                dueDate:
+                  type: string
+                  format: date-time
+            example:
+              workItemTypeId: "wit_abc123"
+              entityId: "ent_xyz456"
+              title: "Collect passport documents"
+              description: "Collect and verify passport and visa copies"
+              priority: "HIGH"
+              dueDate: "2026-03-15T00:00:00.000Z"
+      responses:
+        '201':
+          description: Work item created with status DRAFT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItem'
+        '400':
+          description: Validation error
+        '404':
+          description: Work item type or entity not found
+
+    get:
+      tags: [Work Items]
+      summary: Get work items in a workspace
+      description: Requires **MEMBER** role or higher. Supports multiple filter query params.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/WorkItemStatus'
+          description: Filter by status
+        - name: workItemTypeId
+          in: query
+          schema:
+            type: string
+          description: Filter by work item type
+        - name: entityId
+          in: query
+          schema:
+            type: string
+          description: Filter by entity
+        - name: assignedToUserId
+          in: query
+          schema:
+            type: string
+          description: Filter by assigned user
+        - name: priority
+          in: query
+          schema:
+            $ref: '#/components/schemas/WorkItemPriority'
+          description: Filter by priority
+      responses:
+        '200':
+          description: Array of work items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkItem'
+
+  /workspaces/{workspaceId}/work-items/{id}:
+    get:
+      tags: [Work Items]
+      summary: Get a work item by ID
+      description: Requires **MEMBER** role or higher. Includes `linkedDocumentIds` array.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '200':
+          description: Work item with linked document IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItemWithLinks'
+        '404':
+          description: Work item not found
+
+    put:
+      tags: [Work Items]
+      summary: Update a work item
+      description: |
+        Requires **MEMBER** role or higher.
+
+        Updates editable fields. **Does not** change status — use `PATCH /status` for that.
+        All fields are optional.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 255
+                description:
+                  type: string
+                  maxLength: 2000
+                priority:
+                  $ref: '#/components/schemas/WorkItemPriority'
+                dueDate:
+                  type: string
+                  format: date-time
+                  nullable: true
+                entityId:
+                  type: string
+                  description: Reassign to a different entity
+            example:
+              priority: "LOW"
+              dueDate: "2026-04-01T00:00:00.000Z"
+      responses:
+        '200':
+          description: Updated work item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItem'
+        '404':
+          description: Work item not found
+
+    delete:
+      tags: [Work Items]
+      summary: Delete a work item
+      description: Requires **ADMIN** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '204':
+          description: Deleted (no response body)
+        '404':
+          description: Work item not found
+
+  /workspaces/{workspaceId}/work-items/{id}/status:
+    patch:
+      tags: [Work Items]
+      summary: Update work item status
+      description: |
+        Requires **MEMBER** role or higher.
+
+        **Valid transitions:**
+        | From        | To          | Allowed? |
+        |-------------|-------------|----------|
+        | DRAFT       | ACTIVE      | ✅       |
+        | ACTIVE      | COMPLETED   | ✅       |
+        | COMPLETED   | ACTIVE      | ✅ (reopen) |
+        | ACTIVE      | DRAFT       | ✅ (unstart) |
+        | DRAFT       | COMPLETED   | ❌       |
+        | COMPLETED   | DRAFT       | ❌       |
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/WorkItemStatus'
+            example:
+              status: "ACTIVE"
+      responses:
+        '200':
+          description: Work item with updated status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItem'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Work item not found
+
+  /workspaces/{workspaceId}/work-items/{id}/documents:
+    post:
+      tags: [Work Items]
+      summary: Link a document to a work item
+      description: Requires **MEMBER** role or higher. The document must exist in the same workspace.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [documentId]
+              properties:
+                documentId:
+                  type: string
+            example:
+              documentId: "doc_abc789"
+      responses:
+        '200':
+          description: Link created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkItemDocument'
+        '404':
+          description: Work item or document not found
+        '409':
+          description: Document already linked to this work item
+
+    get:
+      tags: [Work Items]
+      summary: Get documents linked to a work item
+      description: Requires **MEMBER** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '200':
+          description: Array of work item document link records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkItemDocument'
+
+  /workspaces/{workspaceId}/work-items/{id}/documents/{docId}:
+    delete:
+      tags: [Work Items]
+      summary: Unlink a document from a work item
+      description: Requires **MEMBER** role or higher. Removes the link but does not delete the document.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+        - $ref: '#/components/parameters/docId'
+      responses:
+        '204':
+          description: Document unlinked (no response body)
+        '404':
+          description: Link not found
+
+  /workspaces/{workspaceId}/entities/{entityId}/work-items:
+    get:
+      tags: [Work Items]
+      summary: Get all work items for a specific entity
+      description: Requires **MEMBER** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/entityId'
+      responses:
+        '200':
+          description: Array of work items for the entity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkItem'
+
+  # ── Audit Logs ────────────────────────────────────────────────────────────────
+  /workspaces/{workspaceId}/audit-logs:
+    get:
+      tags: [Audit Logs]
+      summary: Get audit logs for a workspace
+      description: |
+        Requires **ADMIN** role or higher.
+
+        Returns a paginated list of audit events. Every state-changing action in the
+        system generates an audit log entry automatically.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - name: userId
+          in: query
+          schema:
+            type: string
+          description: Filter by actor (who performed the action)
+        - name: action
+          in: query
+          schema:
+            $ref: '#/components/schemas/AuditAction'
+          description: Filter by action type
+        - name: targetType
+          in: query
+          schema:
+            type: string
+          description: Filter by resource type (e.g., "WorkItem", "Entity", "Document")
+        - name: targetId
+          in: query
+          schema:
+            type: string
+          description: Filter by specific resource ID
+        - name: fromDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start of date range (ISO 8601)
+        - name: toDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End of date range (ISO 8601)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+          description: Max records per page (default 50, max 200)
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of records to skip (for pagination)
+      responses:
+        '200':
+          description: Paginated audit log list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+              example:
+                total: 342
+                limit: 50
+                offset: 0
+                logs:
+                  - id: "6790abc123def456"
+                    workspaceId: "ws_abc"
+                    userId: "user_xyz"
+                    action: "WORK_ITEM_CREATED"
+                    targetType: "WorkItem"
+                    targetId: "wi_789"
+                    createdAt: "2026-02-20T10:30:00.000Z"
+        '403':
+          description: Insufficient permissions (requires ADMIN or OWNER)
+
+  # ── Overview ──────────────────────────────────────────────────────────────────
+  /workspaces/{workspaceId}/overview:
+    get:
+      tags: [Overview]
+      summary: Get workspace dashboard overview
+      description: |
+        Requires **MEMBER** role or higher.
+
+        Returns aggregated counts and full lists suitable for rendering a dashboard.
+        Combines data from entities, documents, work items, document types, and work item types.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+      responses:
+        '200':
+          description: Overview data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Overview'
+              example:
+                workspaceId: "ws_abc123"
+                entities:
+                  total: 42
+                  byRole:
+                    SELF: 1
+                    CUSTOMER: 25
+                    EMPLOYEE: 15
+                    VENDOR: 1
+                documents:
+                  total: 156
+                  byStatus:
+                    VALID: 140
+                    EXPIRING: 10
+                    EXPIRED: 6
+                workItems:
+                  total: 78
+                  byStatus:
+                    DRAFT: 20
+                    ACTIVE: 40
+                    COMPLETED: 18
+                documentTypes:
+                  - id: "dt_abc"
+                    name: "Passport"
+                    hasMetadata: true
+                    hasExpiry: true
+                    fields: []
+                workItemTypes:
+                  - id: "wit_xyz"
+                    name: "Employee Onboarding"
+                    entityType: "EMPLOYEE"

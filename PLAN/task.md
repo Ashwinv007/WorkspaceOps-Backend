@@ -102,10 +102,10 @@
 - [ ] Create `AuditLogServiceImpl` (silent failure on log error)
 
 #### Phase 4: Interfaces Layer
-- [ ] Create `AuditLogController` (GET endpoint, Admin only)
-- [ ] Create `AuditLogPresenter`
-- [ ] Create `auditLog.routes.ts`
-- [ ] Register in `app.ts`
+- [x] Create `AuditLogController` (GET endpoint, Admin only)
+- [x] Create `AuditLogPresenter`
+- [x] Create `auditLog.routes.ts`
+- [x] Register in `app.ts`
 
 #### Phase 5: Integration (inject into existing use cases)
 - [ ] Update Entity use cases (`CreateEntity`, `UpdateEntity`, `DeleteEntity`)
@@ -123,9 +123,9 @@
 - [ ] Test RBAC (Admin can see, Member cannot)
 - [ ] Test audit failure does not break main operation
 
-### Overview/Dashboard (HLR0028-0029)
-- [ ] Implement `GetWorkspaceOverview` use case (aggregations)
-- [ ] Implement `OverviewController` and routes
+### Overview/Dashboard (HLR0028-0029) ✅
+- [x] Implement `GetWorkspaceOverview` use case (aggregations)
+- [x] Implement `OverviewController` and routes
 
 ## Common Infrastructure ✅
 - [x] Error handling middleware (`errorHandler.ts`)
@@ -156,4 +156,16 @@
 - [x] Performance optimization plan
 - [x] Security hardening plan
 - [x] Beginner guide for auth module
-- [ ] API documentation (Swagger/OpenAPI)
+### API Documentation (Swagger/OpenAPI) — ⬜ NEXT
+- [ ] Install `swagger-jsdoc` and `swagger-ui-express`
+- [ ] Create `src/config/swagger.ts` configuration
+- [ ] Add `/api-docs` route in `app.ts`
+- [ ] Annotate Auth Controller
+- [ ] Annotate Workspace Controller
+- [ ] Annotate Entity Controller
+- [ ] Annotate Document Type Controller
+- [ ] Annotate Document Controller
+- [ ] Annotate Work Item Controller
+- [ ] Annotate Audit Log Controller
+- [ ] Annotate Overview Controller
+- [ ] Verify generated documentation

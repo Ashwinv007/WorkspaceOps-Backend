@@ -1,4 +1,8 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
+import yaml from 'js-yaml';
+import swaggerUi from 'swagger-ui-express';
 import authRoutes from './modules/auth/infrastructure/routes/auth.routes';
 import workspaceRoutes from './modules/workspace/infrastructure/routes/workspace.routes';
 import entityRoutes from './modules/entity/infrastructure/routes/entity.routes';
@@ -12,6 +16,12 @@ import { errorHandler } from './shared/interfaces/middleware/errorHandler';
 const app = express();
 
 app.use(express.json());
+
+// Swagger UI — interactive API docs at /api-docs
+const swaggerSpec = yaml.load(
+  fs.readFileSync(path.resolve(process.cwd(), 'swagger.yaml'), 'utf8')
+) as object;
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Health check
 app.get('/health', (_req, res) => {

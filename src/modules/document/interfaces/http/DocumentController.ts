@@ -120,8 +120,9 @@ export class DocumentController {
         try {
             const workspaceId = req.params.workspaceId as string;
             const filters = {
-                documentTypeId: req.query.documentTypeId as string,
-                entityId: req.query.entityId as string
+                documentTypeId: req.query.documentTypeId as string | undefined,
+                entityId: req.query.entityId as string | undefined,
+                expiryStatus: req.query.expiryStatus as string | undefined
             };
 
             const documents = await this.getDocumentsUseCase.execute(workspaceId, filters);

@@ -36,4 +36,14 @@ export interface IEntityRepository {
      * Count total entities in a workspace (for overview)
      */
     countByWorkspace(workspaceId: string): Promise<number>;
+
+    /**
+     * Count entities grouped by role in a workspace (for overview byRole breakdown)
+     */
+    countByRoleGrouped(workspaceId: string): Promise<Record<string, number>>;
+
+    /**
+     * Find entities in a workspace with optional role filter
+     */
+    findByWorkspaceIdFiltered(workspaceId: string, role?: string): Promise<Entity[]>;
 }

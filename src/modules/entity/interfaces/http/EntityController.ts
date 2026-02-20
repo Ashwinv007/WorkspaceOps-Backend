@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { CreateEntity } from '../../application/use-cases/CreateEntity';
 import { GetEntities } from '../../application/use-cases/GetEntities';
+import { GetEntityById } from '../../application/use-cases/GetEntityById';
 import { UpdateEntity } from '../../application/use-cases/UpdateEntity';
 import { DeleteEntity } from '../../application/use-cases/DeleteEntity';
 import { EntityPresenter } from '../presenters/EntityPresenter';
@@ -8,7 +9,7 @@ import { EntityRole } from '../../domain/entities/Entity';
 
 /**
  * Entity Controller (Interfaces Layer)
- * 
+ *
  * Handles HTTP requests for entity operations.
  * Delegates business logic to use cases and formats responses via presenter.
  */
@@ -16,6 +17,7 @@ export class EntityController {
     constructor(
         private readonly createEntityUseCase: CreateEntity,
         private readonly getEntitiesUseCase: GetEntities,
+        private readonly getEntityByIdUseCase: GetEntityById,
         private readonly updateEntityUseCase: UpdateEntity,
         private readonly deleteEntityUseCase: DeleteEntity,
         private readonly presenter: EntityPresenter
@@ -23,6 +25,7 @@ export class EntityController {
         // Bind methods to preserve 'this' context
         this.createEntity = this.createEntity.bind(this);
         this.getEntities = this.getEntities.bind(this);
+        this.getEntityById = this.getEntityById.bind(this);
         this.updateEntity = this.updateEntity.bind(this);
         this.deleteEntity = this.deleteEntity.bind(this);
     }
@@ -59,17 +62,36 @@ export class EntityController {
 
     /**
      * GET /workspaces/:workspaceId/entities
-     * Get all entities in a workspace
+     * Get all entities in a workspace, optionally filtered by ?role=CUSTOMER|EMPLOYEE|VENDOR|SELF
      */
     async getEntities(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const workspaceId = req.params.workspaceId as string;
+            const role = req.query.role as string | undefined;
 
             const entities = await this.getEntitiesUseCase.execute({
-                workspaceId
+                workspaceId,
+                role: role?.toUpperCase()
             });
 
             res.status(200).json(this.presenter.presentEntities(entities));
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
+     * GET /workspaces/:workspaceId/entities/:id
+     * Get a single entity by ID
+     */
+    async getEntityById(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const workspaceId = req.params.workspaceId as string;
+            const id = req.params.id as string;
+
+            const entity = await this.getEntityByIdUseCase.execute({ id, workspaceId });
+
+            res.status(200).json(this.presenter.presentEntity(entity));
         } catch (error) {
             next(error);
         }

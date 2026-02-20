@@ -5,6 +5,7 @@ import { EntityPresenter } from '../../interfaces/presenters/EntityPresenter';
 // Use cases
 import { CreateEntity } from '../../application/use-cases/CreateEntity';
 import { GetEntities } from '../../application/use-cases/GetEntities';
+import { GetEntityById } from '../../application/use-cases/GetEntityById';
 import { UpdateEntity } from '../../application/use-cases/UpdateEntity';
 import { DeleteEntity } from '../../application/use-cases/DeleteEntity';
 
@@ -46,6 +47,10 @@ const getEntitiesUseCase = new GetEntities(
     entityRepo
 );
 
+const getEntityByIdUseCase = new GetEntityById(
+    entityRepo
+);
+
 const updateEntityUseCase = new UpdateEntity(
     entityRepo,
     auditLogService
@@ -63,6 +68,7 @@ const presenter = new EntityPresenter();
 const entityController = new EntityController(
     createEntityUseCase,
     getEntitiesUseCase,
+    getEntityByIdUseCase,
     updateEntityUseCase,
     deleteEntityUseCase,
     presenter
@@ -82,6 +88,13 @@ router.get(
     authMiddleware,
     requireMember,
     entityController.getEntities
+);
+
+router.get(
+    '/workspaces/:workspaceId/entities/:id',
+    authMiddleware,
+    requireMember,
+    entityController.getEntityById
 );
 
 router.put(

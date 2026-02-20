@@ -11,6 +11,7 @@ import { UpdateWorkItemStatus } from '../../application/use-cases/UpdateWorkItem
 import { LinkDocument } from '../../application/use-cases/LinkDocument';
 import { UnlinkDocument } from '../../application/use-cases/UnlinkDocument';
 import { DeleteWorkItem } from '../../application/use-cases/DeleteWorkItem';
+import { GetLinkedDocuments } from '../../application/use-cases/GetLinkedDocuments';
 import { IWorkItemDocumentRepository } from '../../domain/repositories/IWorkItemDocumentRepository';
 import { WorkItemPresenter } from '../presenters/WorkItemPresenter';
 import { WorkItemStatus } from '../../domain/enums/WorkItemStatus';
@@ -38,6 +39,7 @@ export class WorkItemController {
         private readonly unlinkDocumentUC: UnlinkDocument,
         private readonly deleteWorkItemUC: DeleteWorkItem,
         private readonly workItemDocumentRepo: IWorkItemDocumentRepository,
+        private readonly getLinkedDocumentsUC: GetLinkedDocuments,
         private readonly presenter: WorkItemPresenter
     ) {
         // Bind all methods to this instance
@@ -282,9 +284,9 @@ export class WorkItemController {
             // Verify work item exists
             await this.getWorkItemByIdUC.execute(id as string, workspaceId as string);
 
-            // Get linked documents
-            const links = await this.workItemDocumentRepo.findByWorkItem(id as string);
-            res.json(this.presenter.presentWorkItemDocuments(links));
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            const docs = await this.getLinkedDocumentsUC.execute(id as string, workspaceId as string);
+            res.json(this.presenter.presentLinkedDocuments(docs, baseUrl));
         } catch (error) {
             next(error);
         }

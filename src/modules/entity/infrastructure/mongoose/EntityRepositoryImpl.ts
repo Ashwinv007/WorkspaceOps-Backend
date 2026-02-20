@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { IEntityRepository } from '../../domain/repositories/IEntityRepository';
 import { Entity, EntityRole } from '../../domain/entities/Entity';
 import { EntityModel } from './EntityModel';
@@ -102,5 +103,39 @@ export class EntityRepositoryImpl implements IEntityRepository {
      */
     async countByWorkspace(workspaceId: string): Promise<number> {
         return EntityModel.countDocuments({ workspaceId });
+    }
+
+    /**
+     * Count entities grouped by role (for overview byRole breakdown)
+     */
+    async countByRoleGrouped(workspaceId: string): Promise<Record<string, number>> {
+        const results = await EntityModel.aggregate([
+            { $match: { workspaceId: new mongoose.Types.ObjectId(workspaceId) } },
+            { $group: { _id: '$role', count: { $sum: 1 } } }
+        ]);
+
+        const counts: Record<string, number> = { CUSTOMER: 0, EMPLOYEE: 0, VENDOR: 0, SELF: 0 };
+        results.forEach((item: { _id: string; count: number }) => {
+            counts[item._id] = item.count;
+        });
+        return counts;
+    }
+
+    /**
+     * Find entities in a workspace with optional role filter
+     */
+    async findByWorkspaceIdFiltered(workspaceId: string, role?: string): Promise<Entity[]> {
+        const query: Record<string, string> = { workspaceId };
+        if (role) query.role = role;
+
+        const docs = await EntityModel.find(query).sort({ createdAt: -1 });
+
+        return docs.map(doc => new Entity(
+            doc._id.toString(),
+            doc.workspaceId.toString(),
+            doc.name,
+            doc.role as EntityRole,
+            doc.createdAt
+        ));
     }
 }

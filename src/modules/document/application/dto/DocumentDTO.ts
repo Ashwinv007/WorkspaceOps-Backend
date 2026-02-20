@@ -21,4 +21,5 @@ export interface UpdateDocumentDTO {
 export interface DocumentFilters {
     documentTypeId?: string;
     entityId?: string;
+    expiryStatus?: string; // VALID | EXPIRING | EXPIRED — filtered in-memory after fetch
 }

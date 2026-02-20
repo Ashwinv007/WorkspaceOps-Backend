@@ -5,6 +5,7 @@ import { WorkspacePresenter } from '../../interfaces/presenters/WorkspacePresent
 // Use cases
 import { CreateWorkspace } from '../../application/use-cases/CreateWorkspace';
 import { GetUserWorkspaces } from '../../application/use-cases/GetUserWorkspaces';
+import { GetWorkspaceMembers } from '../../application/use-cases/GetWorkspaceMembers';
 import { InviteUserToWorkspace } from '../../application/use-cases/InviteUserToWorkspace';
 import { UpdateWorkspaceMember } from '../../application/use-cases/UpdateWorkspaceMember';
 import { RemoveUserFromWorkspace } from '../../application/use-cases/RemoveUserFromWorkspace';
@@ -53,6 +54,11 @@ const getUserWorkspacesUseCase = new GetUserWorkspaces(
     workspaceMemberRepo
 );
 
+const getMembersUseCase = new GetWorkspaceMembers(
+    workspaceRepo,
+    workspaceMemberRepo
+);
+
 const inviteUserUseCase = new InviteUserToWorkspace(
     workspaceRepo,
     workspaceMemberRepo,
@@ -77,6 +83,7 @@ const presenter = new WorkspacePresenter();
 const workspaceController = new WorkspaceController(
     createWorkspaceUseCase,
     getUserWorkspacesUseCase,
+    getMembersUseCase,
     inviteUserUseCase,
     updateMemberUseCase,
     removeMemberUseCase,
@@ -87,6 +94,7 @@ const workspaceController = new WorkspaceController(
 // Note: POST / only requires authentication, not RBAC, since no workspace exists yet
 router.post('/', authMiddleware, workspaceController.createWorkspace);
 router.get('/', authMiddleware, workspaceController.getUserWorkspaces);
+router.get('/:id/members', authMiddleware, requireAdmin, workspaceController.getMembers);
 router.post('/:id/members', authMiddleware, requireAdmin, workspaceController.inviteUser);
 router.put('/:id/members/:memberId', authMiddleware, requireAdmin, workspaceController.updateMember);
 router.delete('/:id/members/:memberId', authMiddleware, requireAdmin, workspaceController.removeMember);

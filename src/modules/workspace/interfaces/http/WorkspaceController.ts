@@ -67,7 +67,7 @@ export class WorkspaceController {
 
             const dto: InviteUserToWorkspaceDTO = {
                 workspaceId,
-                invitedUserId: req.body.invitedUserId,
+                invitedEmail: req.body.invitedEmail,
                 role: req.body.role,
                 invitedByUserId: req.user!.userId
             };

@@ -186,19 +186,24 @@ Get all workspaces the current user belongs to.
 ---
 
 ### POST `/workspaces/:id/members`
-Invite an existing user to the workspace.
+Invite an existing user to the workspace by their email address.
 
 **Minimum role:** ADMIN
 
 **Request Body:**
 ```json
 {
-  "invitedUserId": "64f1a2b3c4d5e6f7a8b9c0d2",
+  "invitedEmail": "bob@example.com",
   "role": "MEMBER"
 }
 ```
 
-> **Note:** Use `invitedUserId` (the user's ID), not their email.
+| Field         | Type   | Required | Notes                                          |
+|---------------|--------|----------|------------------------------------------------|
+| invitedEmail  | string | ✅       | The invitee's registered email address         |
+| role          | string | ✅       | `OWNER`, `ADMIN`, `MEMBER`, or `VIEWER`       |
+
+**How it works internally:** The API resolves the email to a userId and stores the userId in the membership record. The response returns the `userId`, not the email.
 
 **Response `201`:**
 ```json
@@ -211,7 +216,13 @@ Invite an existing user to the workspace.
 }
 ```
 
-**Errors:** `404` user not found · `409` already a member
+**Edge cases & errors:**
+| Status | Scenario |
+|--------|----------|
+| `404`  | No account exists with that email — user must sign up first |
+| `409`  | That user is already a member of this workspace |
+| `403`  | Caller does not have ADMIN or OWNER role |
+| `400`  | Invalid role value |
 
 ---
 

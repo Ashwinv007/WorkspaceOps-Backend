@@ -16,7 +16,7 @@ import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 export interface InviteUserToWorkspaceDTO {
     workspaceId: string;
-    invitedUserId: string;
+    invitedEmail: string;
     role: WorkspaceRole;
     invitedByUserId: string; // For audit purposes (not used in MVP)
 }
@@ -35,27 +35,22 @@ export class InviteUserToWorkspace {
             throw new ValidationError('Invalid workspace ID format');
         }
 
-        // 2. Validate invited user ID format
-        if (!isValidObjectId(dto.invitedUserId)) {
-            throw new ValidationError('Invalid user ID format');
-        }
-
-        // 3. Verify workspace exists
+        // 2. Verify workspace exists
         const workspace = await this.workspaceRepo.findById(dto.workspaceId);
         if (!workspace) {
             throw new NotFoundError('Workspace not found');
         }
 
-        // 4. Verify invited user exists
-        const user = await this.userRepo.findById(dto.invitedUserId);
+        // 4. Resolve email → user (throws 404 if email not registered)
+        const user = await this.userRepo.findByEmail(dto.invitedEmail);
         if (!user) {
-            throw new NotFoundError('User not found');
+            throw new NotFoundError('No user found with that email address');
         }
 
         // 5. Check if user is already a member
         const existingMembership = await this.workspaceMemberRepo.findByWorkspaceIdAndUserId(
             dto.workspaceId,
-            dto.invitedUserId
+            user.id
         );
 
         if (existingMembership) {
@@ -68,10 +63,10 @@ export class InviteUserToWorkspace {
             throw new ValidationError('Invalid role');
         }
 
-        // 7. Create workspace membership
+        // 7. Create workspace membership (store resolved userId internally)
         const membership = await this.workspaceMemberRepo.create({
             workspaceId: dto.workspaceId,
-            userId: dto.invitedUserId,
+            userId: user.id,
             role: dto.role
         });
 

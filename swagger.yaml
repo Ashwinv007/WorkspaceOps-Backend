@@ -740,15 +740,16 @@ paths:
           application/json:
             schema:
               type: object
-              required: [invitedUserId, role]
+              required: [invitedEmail, role]
               properties:
-                invitedUserId:
+                invitedEmail:
                   type: string
-                  description: ID of the existing user to invite
+                  format: email
+                  description: Email address of the user to invite (must already have an account)
                 role:
                   $ref: '#/components/schemas/WorkspaceRole'
             example:
-              invitedUserId: "64f1a2b3c4d5e6f7a8b9c0d2"
+              invitedEmail: "bob@example.com"
               role: "MEMBER"
       responses:
         '201':
@@ -760,7 +761,7 @@ paths:
         '403':
           description: Insufficient permissions
         '404':
-          description: Workspace or user not found
+          description: No user found with that email address, or workspace not found
         '409':
           description: User is already a member of this workspace
 

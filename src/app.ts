@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import yaml from 'js-yaml';
@@ -14,6 +15,12 @@ import overviewRoutes from './modules/overview/infrastructure/routes/overview.ro
 import { errorHandler } from './shared/interfaces/middleware/errorHandler';
 
 const app = express();
+
+// CORS — allow frontend origin (set FRONTEND_URL in .env for production)
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true,
+}));
 
 app.use(express.json());
 

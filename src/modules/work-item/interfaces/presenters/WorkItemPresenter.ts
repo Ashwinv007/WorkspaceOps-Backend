@@ -1,6 +1,7 @@
 import { WorkItemType } from '../../domain/entities/WorkItemType';
 import { WorkItem } from '../../domain/entities/WorkItem';
 import { WorkItemDocument } from '../../domain/entities/WorkItemDocument';
+import { LinkedDocument } from '../../application/use-cases/GetLinkedDocuments';
 
 /**
  * WorkItemPresenter
@@ -72,6 +73,34 @@ export class WorkItemPresenter {
         return {
             linkedDocuments: links.map(l => this.presentWorkItemDocument(l)),
             count: links.length
+        };
+    }
+
+    // --- Linked Documents (full document objects) ---
+
+    presentLinkedDocument(doc: LinkedDocument, baseUrl: string) {
+        return {
+            id: doc.id,
+            workspaceId: doc.workspaceId,
+            documentTypeId: doc.documentTypeId,
+            entityId: doc.entityId ?? null,
+            fileName: doc.fileName,
+            fileSize: doc.fileSize,
+            mimeType: doc.mimeType ?? null,
+            expiryDate: doc.expiryDate ?? null,
+            expiryStatus: doc.calculateExpiryStatus(),
+            metadata: doc.metadata ?? null,
+            uploadedBy: doc.uploadedBy,
+            createdAt: doc.createdAt,
+            linkedAt: doc.linkedAt,
+            downloadUrl: `${baseUrl}/workspaces/${doc.workspaceId}/documents/${doc.id}/download`
+        };
+    }
+
+    presentLinkedDocuments(docs: LinkedDocument[], baseUrl: string) {
+        return {
+            linkedDocuments: docs.map(d => this.presentLinkedDocument(d, baseUrl)),
+            count: docs.length
         };
     }
 }

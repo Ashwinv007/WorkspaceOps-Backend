@@ -15,6 +15,7 @@ import { UpdateWorkItemStatus } from '../../application/use-cases/UpdateWorkItem
 import { LinkDocument } from '../../application/use-cases/LinkDocument';
 import { UnlinkDocument } from '../../application/use-cases/UnlinkDocument';
 import { DeleteWorkItem } from '../../application/use-cases/DeleteWorkItem';
+import { GetLinkedDocuments } from '../../application/use-cases/GetLinkedDocuments';
 
 // Repository implementations
 import { WorkItemTypeRepositoryImpl } from '../mongoose/WorkItemTypeRepositoryImpl';
@@ -66,6 +67,7 @@ const updateWorkItemStatusUC = new UpdateWorkItemStatus(workItemRepo, auditLogSe
 const linkDocumentUC = new LinkDocument(workItemRepo, workItemDocumentRepo, documentRepo, auditLogService);
 const unlinkDocumentUC = new UnlinkDocument(workItemRepo, workItemDocumentRepo, auditLogService);
 const deleteWorkItemUC = new DeleteWorkItem(workItemRepo, workItemDocumentRepo, auditLogService);
+const getLinkedDocumentsUC = new GetLinkedDocuments(workItemDocumentRepo, documentRepo);
 
 // 3. Create presenter and controller
 const presenter = new WorkItemPresenter();
@@ -83,6 +85,7 @@ const controller = new WorkItemController(
     unlinkDocumentUC,
     deleteWorkItemUC,
     workItemDocumentRepo,
+    getLinkedDocumentsUC,
     presenter
 );
 

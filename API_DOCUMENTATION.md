@@ -57,7 +57,8 @@ Each endpoint description states the **minimum** role required.
 
 | Module         | Response Format                                  |
 |----------------|--------------------------------------------------|
-| Auth           | `{ user, token }`                               |
+| Auth (signup)  | `{ success, data: { userId, workspaceId, token }, message }` |
+| Auth (login)   | `{ success, data: { userId, token }, message }` |
 | Workspace      | Direct object or array with `role` field         |
 | Entity         | Direct object `{ id, workspaceId, name, role }` |
 | Entity list    | `{ entities: [...], count }`                    |
@@ -80,6 +81,16 @@ Register a new user account.
 
 **Auth required:** No
 
+**What signup creates automatically:**
+Signup does more than just create a user — it bootstraps your entire organisation:
+1. **User** — your account
+2. **Tenant** — an organisation container (holds your workspaces)
+3. **Default Workspace** — a first workspace inside the tenant
+4. **WorkspaceMember** — you are added as `OWNER` of the default workspace
+
+The `workspaceId` in the response is the default workspace just created.
+The `tenantId` is **not** returned directly — to obtain it, call `GET /workspaces` and read the `tenantId` field. You'll need it when creating additional workspaces.
+
 **Request Body:**
 ```json
 {
@@ -98,16 +109,17 @@ Register a new user account.
 **Response `201`:**
 ```json
 {
-  "user": {
-    "id": "64f1a2b3c4d5e6f7a8b9c0d1",
-    "email": "john@example.com",
-    "name": "John Doe",
-    "createdAt": "2026-02-20T10:00:00.000Z",
-    "updatedAt": "2026-02-20T10:00:00.000Z"
+  "success": true,
+  "data": {
+    "userId": "64f1a2b3c4d5e6f7a8b9c0d1",
+    "workspaceId": "64f1a2b3c4d5e6f7a8b9c0d2",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
   },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "message": "User registered successfully"
 }
 ```
+
+> **`workspaceId`** — the default workspace auto-created for your account. Store this; you'll use it for all workspace-scoped API calls.
 
 **Errors:** `400` validation error · `409` email already registered
 
@@ -126,7 +138,19 @@ Login with email and password.
 }
 ```
 
-**Response `200`:** Same shape as signup — `{ user, token }`
+**Response `200`:**
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "64f1a2b3c4d5e6f7a8b9c0d1",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  },
+  "message": "Login successful"
+}
+```
+
+> Login does **not** return `workspaceId`. To get your workspaces, call `GET /workspaces` after login.
 
 **Errors:** `401` invalid credentials
 
@@ -135,22 +159,26 @@ Login with email and password.
 ## 2. Workspaces
 
 ### POST `/workspaces`
-Create a new workspace. The caller automatically becomes the **OWNER**.
+Create an additional workspace within an existing tenant. The caller automatically becomes the **OWNER**.
 
 **Minimum role:** Authenticated (any)
+
+**Where does `tenantId` come from?**
+Your `tenantId` was auto-created when you signed up (as part of the Tenant→Workspace chain).
+It is **not** in the signup response — call `GET /workspaces` and copy the `tenantId` field from any workspace. All your workspaces share the same `tenantId`.
 
 **Request Body:**
 ```json
 {
-  "tenantId": "tenant_abc123",
+  "tenantId": "64f1a2b3c4d5e6f7a8b9c0d0",
   "name": "Acme HQ"
 }
 ```
 
-| Field    | Type   | Required |
-|----------|--------|----------|
-| tenantId | string | ✅       |
-| name     | string | ✅       |
+| Field    | Type   | Required | Notes |
+|----------|--------|----------|-------|
+| tenantId | string | ✅       | From `GET /workspaces` → `tenantId` |
+| name     | string | ✅       | Human-readable workspace name |
 
 **Response `201`:**
 ```json
@@ -181,6 +209,24 @@ Get all workspaces the current user belongs to.
     "createdAt": "2026-02-20T10:00:00.000Z"
   }
 ]
+```
+
+---
+
+### GET `/workspaces/:id/members`
+List all current members of the workspace.
+
+**Minimum role:** ADMIN
+
+**Response `200`:**
+```json
+{
+  "members": [
+    { "id": "mem_abc", "workspaceId": "ws_xyz", "userId": "64f1a2b3...", "role": "OWNER", "createdAt": "..." },
+    { "id": "mem_def", "workspaceId": "ws_xyz", "userId": "64f1a2b3...", "role": "MEMBER", "createdAt": "..." }
+  ],
+  "count": 2
+}
 ```
 
 ---
@@ -295,6 +341,12 @@ Get all entities in the workspace.
 
 **Minimum role:** MEMBER
 
+**Query Parameters:**
+
+| Param  | Type   | Notes                                                      |
+|--------|--------|------------------------------------------------------------|
+| `role` | string | Filter by role: `CUSTOMER`, `EMPLOYEE`, `VENDOR`, `SELF`  |
+
 **Response `200`:**
 ```json
 {
@@ -304,6 +356,17 @@ Get all entities in the workspace.
   "count": 1
 }
 ```
+
+---
+
+### GET `/workspaces/:workspaceId/entities/:id`
+Get a single entity by ID.
+
+**Minimum role:** MEMBER
+
+**Response `200`:** Entity object `{ id, workspaceId, name, role, createdAt }`
+
+**Errors:** `404` if entity not found or belongs to a different workspace.
 
 ---
 
@@ -534,10 +597,13 @@ Get all documents in a workspace.
 
 **Query Parameters:**
 
-| Param          | Type   | Notes                       |
-|----------------|--------|-----------------------------|
-| `documentTypeId` | string | Filter by document type   |
-| `entityId`     | string | Filter by entity            |
+| Param            | Type   | Notes                                                                           |
+|------------------|--------|---------------------------------------------------------------------------------|
+| `documentTypeId` | string | Filter by document type                                                         |
+| `entityId`       | string | Filter by entity                                                                |
+| `expiryStatus`   | string | Filter by computed expiry status: `VALID`, `EXPIRING`, `EXPIRED`               |
+
+> **Note:** `expiryStatus` filtering is done in-memory after DB fetch (expiry status is computed, not stored).
 
 **Response `200`:**
 ```json
@@ -675,7 +741,7 @@ Get all work item types.
 
 **Minimum role:** MEMBER
 
-**Response `200`:** Direct array of work item type objects
+**Response `200`:** `{ workItemTypes: [...], count: N }` — use `data.workItemTypes` (not `data` as a direct array)
 
 ---
 
@@ -741,7 +807,7 @@ Get work items with optional filters.
 | `assignedToUserId` | string | Filter by assignee     |
 | `priority`       | string | `LOW`, `MEDIUM`, `HIGH` |
 
-**Response `200`:** Direct array of work item objects
+**Response `200`:** `{ workItems: [...], count: N }` — use `data.workItems` (not `data` as a direct array)
 
 ---
 
@@ -846,11 +912,36 @@ Link an existing document to a work item.
 ---
 
 ### GET `/workspaces/:workspaceId/work-items/:id/documents`
-Get all documents linked to a work item.
+Get all documents linked to a work item. Returns full document objects (not just link metadata).
 
 **Minimum role:** MEMBER
 
-**Response `200`:** Array of `WorkItemDocument` link records (not full document objects — just the link metadata with `workItemId`, `documentId`, `linkedAt`)
+**Response `200`:**
+```json
+{
+  "linkedDocuments": [
+    {
+      "id": "doc_abc",
+      "workspaceId": "ws_123",
+      "documentTypeId": "dt_xyz",
+      "entityId": "ent_456",
+      "fileName": "passport.pdf",
+      "fileSize": 204800,
+      "mimeType": "application/pdf",
+      "expiryDate": "2029-06-30",
+      "expiryStatus": "VALID",
+      "metadata": null,
+      "uploadedBy": "user_789",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "linkedAt": "2026-02-01T00:00:00.000Z",
+      "downloadUrl": "http://localhost:4000/workspaces/ws_123/documents/doc_abc/download"
+    }
+  ],
+  "count": 1
+}
+```
+
+> Note: `documentTypeId` is an ID. To display a human-readable document type name, join client-side using data from `GET /document-types`.
 
 ---
 
@@ -877,7 +968,7 @@ Get all work items for a specific entity.
 
 **Minimum role:** MEMBER
 
-**Response `200`:** Direct array of work item objects
+**Response `200`:** `{ workItems: [...], count: N }` — use `data.workItems` (not `data` as a direct array)
 
 ---
 
@@ -969,7 +1060,7 @@ Get aggregated workspace summary for dashboard display.
       "name": "Passport",
       "hasMetadata": true,
       "hasExpiry": true,
-      "fields": []
+      "fieldCount": 2
     }
   ],
   "workItemTypes": [

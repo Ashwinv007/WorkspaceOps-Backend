@@ -11,6 +11,7 @@ import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 
 export interface GetEntitiesDTO {
     workspaceId: string;
+    role?: string; // Optional filter: CUSTOMER | EMPLOYEE | VENDOR | SELF
 }
 
 export class GetEntities {
@@ -24,8 +25,8 @@ export class GetEntities {
             throw new ValidationError('Invalid workspace ID format');
         }
 
-        // 2. Get all entities for workspace
-        const entities = await this.entityRepo.findByWorkspaceId(dto.workspaceId);
+        // 2. Get entities, optionally filtered by role
+        const entities = await this.entityRepo.findByWorkspaceIdFiltered(dto.workspaceId, dto.role);
 
         return entities;
     }

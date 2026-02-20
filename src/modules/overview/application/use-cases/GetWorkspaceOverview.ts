@@ -10,7 +10,7 @@ const EXPIRY_THRESHOLD_DAYS = 30;
 /**
  * GetWorkspaceOverview Use Case
  *
- * Returns aggregated counts for all resources in a workspace.
+ * Returns aggregated counts and summary data for all resources in a workspace.
  * All queries run in parallel for performance.
  */
 export class GetWorkspaceOverview {
@@ -27,41 +27,73 @@ export class GetWorkspaceOverview {
 
         const [
             entityTotal,
+            entityByRole,
             documentTotal,
             documentExpiring,
             documentExpired,
             workItemStatusCounts,
-            documentTypeTotal,
-            workItemTypeTotal
+            documentTypes,
+            workItemTypes
         ] = await Promise.all([
             this.entityRepo.countByWorkspace(workspaceId),
+            this.entityRepo.countByRoleGrouped(workspaceId),
             this.documentRepo.countByWorkspace(workspaceId),
             this.documentRepo.countExpiringDocuments(workspaceId, EXPIRY_THRESHOLD_DAYS),
             this.documentRepo.countExpiredDocuments(workspaceId),
             this.workItemRepo.countByStatusGrouped(workspaceId),
-            this.documentTypeRepo.countByWorkspace(workspaceId),
-            this.workItemTypeRepo.countByWorkspace(workspaceId)
+            this.documentTypeRepo.findByWorkspaceId(workspaceId),
+            this.workItemTypeRepo.findByWorkspace(workspaceId)
         ]);
 
         const documentValid = documentTotal - documentExpiring - documentExpired;
 
+        // Fetch field counts for each document type in parallel
+        const docTypesWithFields = await Promise.all(
+            documentTypes.map(async (dt) => {
+                const fields = await this.documentTypeRepo.getFields(dt.id);
+                return {
+                    id: dt.id,
+                    name: dt.name,
+                    hasMetadata: dt.hasMetadata,
+                    hasExpiry: dt.hasExpiry,
+                    fieldCount: fields.length
+                };
+            })
+        );
+
         return {
             workspaceId,
-            entities: { total: entityTotal },
+            entities: {
+                total: entityTotal,
+                byRole: {
+                    CUSTOMER: entityByRole.CUSTOMER ?? 0,
+                    EMPLOYEE: entityByRole.EMPLOYEE ?? 0,
+                    VENDOR: entityByRole.VENDOR ?? 0,
+                    SELF: entityByRole.SELF ?? 0
+                }
+            },
             documents: {
                 total: documentTotal,
-                VALID: documentValid,
-                EXPIRING: documentExpiring,
-                EXPIRED: documentExpired
+                byStatus: {
+                    VALID: documentValid,
+                    EXPIRING: documentExpiring,
+                    EXPIRED: documentExpired
+                }
             },
             workItems: {
                 total: workItemStatusCounts.DRAFT + workItemStatusCounts.ACTIVE + workItemStatusCounts.COMPLETED,
-                DRAFT: workItemStatusCounts.DRAFT,
-                ACTIVE: workItemStatusCounts.ACTIVE,
-                COMPLETED: workItemStatusCounts.COMPLETED
+                byStatus: {
+                    DRAFT: workItemStatusCounts.DRAFT,
+                    ACTIVE: workItemStatusCounts.ACTIVE,
+                    COMPLETED: workItemStatusCounts.COMPLETED
+                }
             },
-            documentTypes: { total: documentTypeTotal },
-            workItemTypes: { total: workItemTypeTotal }
+            documentTypes: docTypesWithFields,
+            workItemTypes: workItemTypes.map(wit => ({
+                id: wit.id,
+                name: wit.name,
+                ...(wit.entityType && { entityType: wit.entityType })
+            }))
         };
     }
 }

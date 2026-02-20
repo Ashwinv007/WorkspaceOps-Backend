@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { CreateWorkspace, CreateWorkspaceDTO } from '../../application/use-cases/CreateWorkspace';
 import { GetUserWorkspaces } from '../../application/use-cases/GetUserWorkspaces';
+import { GetWorkspaceMembers } from '../../application/use-cases/GetWorkspaceMembers';
 import { InviteUserToWorkspace, InviteUserToWorkspaceDTO } from '../../application/use-cases/InviteUserToWorkspace';
 import { UpdateWorkspaceMember, UpdateWorkspaceMemberDTO } from '../../application/use-cases/UpdateWorkspaceMember';
 import { RemoveUserFromWorkspace, RemoveUserFromWorkspaceDTO } from '../../application/use-cases/RemoveUserFromWorkspace';
@@ -8,7 +9,7 @@ import { WorkspacePresenter } from '../presenters/WorkspacePresenter';
 
 /**
  * Workspace Controller (Interfaces Layer)
- * 
+ *
  * Handles HTTP requests for workspace operations.
  * Transforms HTTP requests into DTOs, calls use cases, and formats responses using presenter.
  */
@@ -16,6 +17,7 @@ export class WorkspaceController {
     constructor(
         private readonly createWorkspaceUseCase: CreateWorkspace,
         private readonly getUserWorkspacesUseCase: GetUserWorkspaces,
+        private readonly getMembersUseCase: GetWorkspaceMembers,
         private readonly inviteUserUseCase: InviteUserToWorkspace,
         private readonly updateMemberUseCase: UpdateWorkspaceMember,
         private readonly removeMemberUseCase: RemoveUserFromWorkspace,
@@ -52,6 +54,34 @@ export class WorkspaceController {
             });
 
             res.status(200).json(this.presenter.toWorkspaceListResponse(result));
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    /**
+     * GET /workspaces/:id/members
+     * List all members of a workspace
+     */
+    getMembers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const workspaceId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+            const members = await this.getMembersUseCase.execute({
+                workspaceId,
+                requestingUserId: req.user!.userId
+            });
+
+            res.status(200).json({
+                members: members.map(m => ({
+                    id: m.id,
+                    workspaceId: m.workspaceId,
+                    userId: m.userId,
+                    role: m.role,
+                    createdAt: m.createdAt
+                })),
+                count: members.length
+            });
         } catch (error) {
             next(error);
         }

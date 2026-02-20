@@ -140,15 +140,49 @@ components:
           type: string
           format: date-time
 
-    AuthResponse:
+    SignupResponse:
       type: object
       properties:
-        user:
-          $ref: '#/components/schemas/User'
-        token:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+              example: "64f1a2b3c4d5e6f7a8b9c0d1"
+            workspaceId:
+              type: string
+              description: ID of the default workspace auto-created at signup
+              example: "64f1a2b3c4d5e6f7a8b9c0d2"
+            token:
+              type: string
+              description: JWT access token — include in Authorization header for all subsequent requests
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        message:
           type: string
-          description: JWT access token — include this in Authorization header for all subsequent requests
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          example: "User registered successfully"
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            userId:
+              type: string
+              example: "64f1a2b3c4d5e6f7a8b9c0d1"
+            token:
+              type: string
+              description: JWT access token — include in Authorization header for all subsequent requests
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        message:
+          type: string
+          example: "Login successful"
 
     # ── Workspace ────────────────────────────────────────────────────────────────
     WorkspaceRole:
@@ -584,11 +618,32 @@ components:
         documentTypes:
           type: array
           items:
-            $ref: '#/components/schemas/DocumentType'
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              hasMetadata:
+                type: boolean
+              hasExpiry:
+                type: boolean
+              fieldCount:
+                type: integer
+                description: Number of metadata fields defined on this document type
         workItemTypes:
           type: array
           items:
-            $ref: '#/components/schemas/WorkItemType'
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              entityType:
+                type: string
+                enum: [SELF, CUSTOMER, EMPLOYEE, VENDOR]
+                description: Optional — restricts which entity roles can be associated
 
 # ════════════════════════════════════════════════════════════════════════════════
 # PATHS
@@ -600,6 +655,15 @@ paths:
     post:
       tags: [Auth]
       summary: Register a new user
+      description: |
+        Registers a new user and automatically creates:
+        - A **Tenant** (organisation container)
+        - A **default Workspace** inside that tenant
+        - Adds the user as **OWNER** of that workspace
+
+        The response includes the `workspaceId` of the auto-created workspace.
+        To get your `tenantId` (needed when creating additional workspaces), call `GET /workspaces`
+        and read the `tenantId` field from any workspace in the response.
       security: []
       requestBody:
         required: true
@@ -627,7 +691,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/SignupResponse'
+              example:
+                success: true
+                data:
+                  userId: "64f1a2b3c4d5e6f7a8b9c0d1"
+                  workspaceId: "64f1a2b3c4d5e6f7a8b9c0d2"
+                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                message: "User registered successfully"
         '400':
           description: Validation error (invalid email, password too short)
           content:
@@ -668,7 +739,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                success: true
+                data:
+                  userId: "64f1a2b3c4d5e6f7a8b9c0d1"
+                  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                message: "Login successful"
         '401':
           description: Invalid credentials
           content:
@@ -681,7 +758,12 @@ paths:
     post:
       tags: [Workspaces]
       summary: Create a new workspace
-      description: The authenticated user automatically becomes the **OWNER**.
+      description: |
+        Create an additional workspace within an existing tenant.
+        The authenticated user automatically becomes the **OWNER**.
+
+        **Where to get `tenantId`:** Call `GET /workspaces` — each workspace object includes a `tenantId`.
+        Your first `tenantId` was auto-created at signup; use it to create more workspaces under the same organisation.
       requestBody:
         required: true
         content:
@@ -692,12 +774,12 @@ paths:
               properties:
                 tenantId:
                   type: string
-                  description: Tenant/organization identifier
+                  description: "Your organisation's tenant ID. Get it from GET /workspaces → tenantId field."
                 name:
                   type: string
                   description: Human-readable workspace name
             example:
-              tenantId: "tenant_abc123"
+              tenantId: "64f1a2b3c4d5e6f7a8b9c0d0"
               name: "Acme HQ"
       responses:
         '201':
@@ -728,6 +810,39 @@ paths:
                   $ref: '#/components/schemas/WorkspaceWithRole'
 
   /workspaces/{id}/members:
+    get:
+      tags: [Workspaces]
+      summary: List workspace members
+      description: Requires **ADMIN** or **OWNER** role. Returns all current members of the workspace.
+      parameters:
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '200':
+          description: List of workspace members with total count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkspaceMember'
+                  count:
+                    type: integer
+              example:
+                members:
+                  - id: "mem_abc"
+                    workspaceId: "ws_abc123"
+                    userId: "user_xyz"
+                    role: "ADMIN"
+                    createdAt: "2025-01-01T00:00:00.000Z"
+                count: 3
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Workspace not found
+
     post:
       tags: [Workspaces]
       summary: Invite a user to the workspace
@@ -860,9 +975,15 @@ paths:
     get:
       tags: [Entities]
       summary: Get all entities in a workspace
-      description: Requires **MEMBER** role or higher.
+      description: Requires **MEMBER** role or higher. Optionally filter by role.
       parameters:
         - $ref: '#/components/parameters/workspaceId'
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [CUSTOMER, EMPLOYEE, VENDOR, SELF]
+          description: Filter entities by role
       responses:
         '200':
           description: List of entities with total count
@@ -872,6 +993,23 @@ paths:
                 $ref: '#/components/schemas/EntityListResponse'
 
   /workspaces/{workspaceId}/entities/{id}:
+    get:
+      tags: [Entities]
+      summary: Get a single entity by ID
+      description: Requires **MEMBER** role or higher.
+      parameters:
+        - $ref: '#/components/parameters/workspaceId'
+        - $ref: '#/components/parameters/pathId'
+      responses:
+        '200':
+          description: Entity details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Entity'
+        '404':
+          description: Entity not found
+
     put:
       tags: [Entities]
       summary: Update an entity
@@ -1206,6 +1344,12 @@ paths:
           schema:
             type: string
           description: Filter by entity ID
+        - name: expiryStatus
+          in: query
+          schema:
+            type: string
+            enum: [VALID, EXPIRING, EXPIRED]
+          description: Filter by computed expiry status (VALID = no expiry or far out; EXPIRING = within 30 days; EXPIRED = past expiry date)
       responses:
         '200':
           description: Document list with count
@@ -1414,13 +1558,18 @@ paths:
         - $ref: '#/components/parameters/workspaceId'
       responses:
         '200':
-          description: Array of work item types
+          description: Work item types with count
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/WorkItemType'
+                type: object
+                properties:
+                  workItemTypes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkItemType'
+                  count:
+                    type: integer
 
   /workspaces/{workspaceId}/work-item-types/{id}:
     delete:
@@ -1523,13 +1672,18 @@ paths:
           description: Filter by priority
       responses:
         '200':
-          description: Array of work items
+          description: Work items with count
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/WorkItem'
+                type: object
+                properties:
+                  workItems:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkItem'
+                  count:
+                    type: integer
 
   /workspaces/{workspaceId}/work-items/{id}:
     get:
@@ -1689,20 +1843,79 @@ paths:
 
     get:
       tags: [Work Items]
-      summary: Get documents linked to a work item
-      description: Requires **MEMBER** role or higher.
+      summary: Get documents linked to a work item (full document objects)
+      description: Requires **MEMBER** role or higher. Returns full document objects with expiry status and download URL — not just link metadata.
       parameters:
         - $ref: '#/components/parameters/workspaceId'
         - $ref: '#/components/parameters/pathId'
       responses:
         '200':
-          description: Array of work item document link records
+          description: Wrapped list of full document objects with linkedAt timestamp
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/WorkItemDocument'
+                type: object
+                properties:
+                  linkedDocuments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        workspaceId:
+                          type: string
+                        documentTypeId:
+                          type: string
+                        entityId:
+                          type: string
+                          nullable: true
+                        fileName:
+                          type: string
+                        fileSize:
+                          type: integer
+                        mimeType:
+                          type: string
+                          nullable: true
+                        expiryDate:
+                          type: string
+                          format: date
+                          nullable: true
+                        expiryStatus:
+                          type: string
+                          enum: [VALID, EXPIRING, EXPIRED, NONE]
+                        metadata:
+                          type: object
+                          nullable: true
+                        uploadedBy:
+                          type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        linkedAt:
+                          type: string
+                          format: date-time
+                        downloadUrl:
+                          type: string
+                  count:
+                    type: integer
+              example:
+                linkedDocuments:
+                  - id: "doc_abc"
+                    workspaceId: "ws_123"
+                    documentTypeId: "dt_xyz"
+                    entityId: "ent_456"
+                    fileName: "passport.pdf"
+                    fileSize: 204800
+                    mimeType: "application/pdf"
+                    expiryDate: "2029-06-30"
+                    expiryStatus: "VALID"
+                    metadata: null
+                    uploadedBy: "user_789"
+                    createdAt: "2026-01-01T00:00:00.000Z"
+                    linkedAt: "2026-02-01T00:00:00.000Z"
+                    downloadUrl: "http://localhost:4000/workspaces/ws_123/documents/doc_abc/download"
+                count: 1
 
   /workspaces/{workspaceId}/work-items/{id}/documents/{docId}:
     delete:
@@ -1729,13 +1942,18 @@ paths:
         - $ref: '#/components/parameters/entityId'
       responses:
         '200':
-          description: Array of work items for the entity
+          description: Work items for the entity with count
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/WorkItem'
+                type: object
+                properties:
+                  workItems:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkItem'
+                  count:
+                    type: integer
 
   # ── Audit Logs ────────────────────────────────────────────────────────────────
   /workspaces/{workspaceId}/audit-logs:
@@ -1863,7 +2081,7 @@ paths:
                     name: "Passport"
                     hasMetadata: true
                     hasExpiry: true
-                    fields: []
+                    fieldCount: 2
                 workItemTypes:
                   - id: "wit_xyz"
                     name: "Employee Onboarding"

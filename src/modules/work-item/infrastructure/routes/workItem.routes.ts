@@ -30,6 +30,7 @@ import { auditLogService } from '../../../audit-log/infrastructure/routes/auditL
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
+import { idempotencyMiddleware } from '../../../../common/middleware/idempotency.middleware';
 
 /**
  * Work Item Routes (Infrastructure Layer)
@@ -128,6 +129,7 @@ router.post(
     '/workspaces/:workspaceId/work-items',
     authMiddleware,
     requireMember,
+    idempotencyMiddleware,
     controller.createWorkItem
 );
 
@@ -168,6 +170,7 @@ router.post(
     '/workspaces/:workspaceId/work-items/:id/documents',
     authMiddleware,
     requireMember,
+    idempotencyMiddleware,
     controller.linkDocument
 );
 

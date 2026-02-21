@@ -1,7 +1,7 @@
 import { IWorkItemRepository } from '../../domain/repositories/IWorkItemRepository';
 import { WorkItem } from '../../domain/entities/WorkItem';
 import { WorkItemStatus } from '../../domain/enums/WorkItemStatus';
-import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { NotFoundError, ValidationError, ConflictError } from '../../../../shared/domain/errors/AppError';
 import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
 import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
@@ -45,10 +45,12 @@ export class UpdateWorkItemStatus {
             );
         }
 
-        // 5. Update status
-        const updated = await this.workItemRepo.updateStatus(id, workspaceId, newStatus);
+        // 5. Update status — conditional on currentStatus to guard against concurrent transitions
+        const currentStatus = item.status;
+        const updated = await this.workItemRepo.updateStatus(id, workspaceId, newStatus, currentStatus);
         if (!updated) {
-            throw new NotFoundError('Work item not found');
+            // null means status changed between our read and write (concurrent update)
+            throw new ConflictError('Work item status was changed concurrently. Please refresh and try again.');
         }
 
         // 6. Audit log (fire-and-forget)

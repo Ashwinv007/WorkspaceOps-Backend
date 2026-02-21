@@ -21,32 +21,37 @@ export class DocumentTypeRepositoryImpl implements IDocumentTypeRepository {
         documentType: Omit<DocumentType, 'id' | 'createdAt'>,
         fields: Omit<DocumentTypeField, 'id' | 'documentTypeId'>[]
     ): Promise<DocumentType> {
-        // Note: Transactions removed for standalone MongoDB
-        // TODO: Re-enable when using MongoDB replica set
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const [docTypeDoc] = await DocumentTypeModel.create([{
+                workspaceId: documentType.workspaceId,
+                name: documentType.name,
+                hasMetadata: documentType.hasMetadata,
+                hasExpiry: documentType.hasExpiry
+            }], { session });
 
-        // Create document type
-        const docTypeDoc = await DocumentTypeModel.create({
-            workspaceId: documentType.workspaceId,
-            name: documentType.name,
-            hasMetadata: documentType.hasMetadata,
-            hasExpiry: documentType.hasExpiry
-        });
+            if (fields.length > 0) {
+                await DocumentTypeFieldModel.insertMany(
+                    fields.map(f => ({
+                        documentTypeId: docTypeDoc._id,
+                        fieldKey: f.fieldKey,
+                        fieldType: f.fieldType,
+                        isRequired: f.isRequired,
+                        isExpiryField: f.isExpiryField
+                    })),
+                    { session }
+                );
+            }
 
-        // Create fields
-        if (fields.length > 0) {
-            await DocumentTypeFieldModel.insertMany(
-                fields.map(f => ({
-                    documentTypeId: docTypeDoc._id,
-                    fieldKey: f.fieldKey,
-                    fieldType: f.fieldType,
-                    isRequired: f.isRequired,
-                    isExpiryField: f.isExpiryField
-                }))
-            );
+            await session.commitTransaction();
+            return this.toDomainDocumentType(docTypeDoc);
+        } catch (err) {
+            await session.abortTransaction();
+            throw err;
+        } finally {
+            session.endSession();
         }
-
-        // Convert to domain entity
-        return this.toDomainDocumentType(docTypeDoc);
     }
 
     /**
@@ -108,14 +113,18 @@ export class DocumentTypeRepositoryImpl implements IDocumentTypeRepository {
      * Delete document type and all its fields
      */
     async delete(id: string): Promise<void> {
-        // Note: Transactions removed for standalone MongoDB
-        // TODO: Re-enable when using MongoDB replica set
-
-        // Delete all associated fields first
-        await DocumentTypeFieldModel.deleteMany({ documentTypeId: id });
-
-        // Delete document type
-        await DocumentTypeModel.findByIdAndDelete(id);
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            await DocumentTypeFieldModel.deleteMany({ documentTypeId: id }, { session });
+            await DocumentTypeModel.findByIdAndDelete(id, { session });
+            await session.commitTransaction();
+        } catch (err) {
+            await session.abortTransaction();
+            throw err;
+        } finally {
+            session.endSession();
+        }
     }
 
     /**

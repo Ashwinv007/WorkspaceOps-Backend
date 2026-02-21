@@ -53,9 +53,11 @@ export interface IWorkItemRepository {
     ): Promise<WorkItem | null>;
 
     /**
-     * Update work item lifecycle status
+     * Update work item lifecycle status.
+     * Conditional update: only writes if currentStatus matches — prevents concurrent races.
+     * Returns null if the status has already changed (caller should treat as 409 Conflict).
      */
-    updateStatus(id: string, workspaceId: string, status: WorkItemStatus): Promise<WorkItem | null>;
+    updateStatus(id: string, workspaceId: string, status: WorkItemStatus, currentStatus: WorkItemStatus): Promise<WorkItem | null>;
 
     /**
      * Delete a work item

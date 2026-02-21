@@ -1,15 +1,24 @@
 import { IWorkspaceMemberRepository } from '../../domain/repositories/IWorkspaceMemberRepository';
 import { WorkspaceMember, WorkspaceRole } from '../../domain/entities/WorkspaceMember';
 import { WorkspaceMemberModel } from './WorkspaceMemberModel';
+import { ValidationError } from '../../../../shared/domain/errors/AppError';
 
 export class WorkspaceMemberRepositoryImpl implements IWorkspaceMemberRepository {
     async create(member: Omit<WorkspaceMember, 'id' | 'createdAt'>): Promise<WorkspaceMember> {
-        const doc = await WorkspaceMemberModel.create({
-            workspaceId: member.workspaceId,
-            userId: member.userId,
-            role: member.role
-        });
-        return this.toDomain(doc);
+        try {
+            const doc = await WorkspaceMemberModel.create({
+                workspaceId: member.workspaceId,
+                userId: member.userId,
+                role: member.role
+            });
+            return this.toDomain(doc);
+        } catch (err: any) {
+            // Unique index on (workspaceId, userId) — catch duplicate gracefully
+            if (err.code === 11000) {
+                throw new ValidationError('User is already a member of this workspace');
+            }
+            throw err;
+        }
     }
 
     async findByWorkspaceIdAndUserId(workspaceId: string, userId: string): Promise<WorkspaceMember | null> {
@@ -40,6 +49,10 @@ export class WorkspaceMemberRepositoryImpl implements IWorkspaceMemberRepository
 
     async delete(id: string): Promise<void> {
         await WorkspaceMemberModel.findByIdAndDelete(id);
+    }
+
+    async countByRole(workspaceId: string, role: string): Promise<number> {
+        return WorkspaceMemberModel.countDocuments({ workspaceId, role });
     }
 
     private toDomain(doc: any): WorkspaceMember {

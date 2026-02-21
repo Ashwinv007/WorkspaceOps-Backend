@@ -94,9 +94,11 @@ export class WorkItemRepositoryImpl implements IWorkItemRepository {
         return mongoDoc ? this.toDomain(mongoDoc) : null;
     }
 
-    async updateStatus(id: string, workspaceId: string, status: WorkItemStatus): Promise<WorkItem | null> {
+    async updateStatus(id: string, workspaceId: string, status: WorkItemStatus, currentStatus: WorkItemStatus): Promise<WorkItem | null> {
+        // Conditional update: only succeeds if status hasn't changed since we read it.
+        // If another request already updated the status, findOneAndUpdate returns null → caller returns 409.
         const mongoDoc = await WorkItemModel.findOneAndUpdate(
-            { _id: id, workspaceId },
+            { _id: id, workspaceId, status: currentStatus },
             { $set: { status } },
             { new: true }
         );

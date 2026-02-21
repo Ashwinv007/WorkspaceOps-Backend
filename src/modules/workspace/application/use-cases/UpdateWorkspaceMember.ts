@@ -6,7 +6,7 @@ import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Update Workspace Member Use Case (Application Layer)
- * 
+ *
  * Changes a user's role in a workspace.
  * Validates that there's always at least one OWNER.
  */
@@ -26,14 +26,6 @@ export class UpdateWorkspaceMember {
 
     async execute(dto: UpdateWorkspaceMemberDTO): Promise<WorkspaceMember> {
         // 1. Find the member to update
-        const member = await this.workspaceMemberRepo.findByWorkspaceIdAndUserId(
-            dto.workspaceId,
-            // We need to find by member ID, but our current interface doesn't support that
-            // For now, we'll need to fetch by ID directly
-            '' // This is a limitation - we'll handle it in the implementation
-        );
-
-        // Better approach: Get all members and find the one to update
         const allMembers = await this.workspaceMemberRepo.findByWorkspaceId(dto.workspaceId);
         const memberToUpdate = allMembers.find(m => m.id === dto.memberId);
 
@@ -41,10 +33,11 @@ export class UpdateWorkspaceMember {
             throw new NotFoundError('Workspace member not found');
         }
 
-        // 2. If changing from OWNER, ensure there's at least one other OWNER
+        // 2. If demoting an OWNER, use an atomic DB count — not an in-memory check.
+        // This prevents the race where two concurrent demotions both see 2 owners and both proceed.
         if (memberToUpdate.role === 'OWNER' && dto.newRole !== 'OWNER') {
-            const owners = allMembers.filter(m => m.role === 'OWNER');
-            if (owners.length <= 1) {
+            const ownerCount = await this.workspaceMemberRepo.countByRole(dto.workspaceId, 'OWNER');
+            if (ownerCount <= 1) {
                 throw new ValidationError('Cannot remove the last owner. Please assign another owner first.');
             }
         }

@@ -22,6 +22,7 @@ import { auditLogService } from '../../../audit-log/infrastructure/routes/auditL
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
+import { idempotencyMiddleware } from '../../../../common/middleware/idempotency.middleware';
 
 /**
  * Workspace Routes (Infrastructure Layer)
@@ -95,7 +96,7 @@ const workspaceController = new WorkspaceController(
 router.post('/', authMiddleware, workspaceController.createWorkspace);
 router.get('/', authMiddleware, workspaceController.getUserWorkspaces);
 router.get('/:id/members', authMiddleware, requireAdmin, workspaceController.getMembers);
-router.post('/:id/members', authMiddleware, requireAdmin, workspaceController.inviteUser);
+router.post('/:id/members', authMiddleware, requireAdmin, idempotencyMiddleware, workspaceController.inviteUser);
 router.put('/:id/members/:memberId', authMiddleware, requireAdmin, workspaceController.updateMember);
 router.delete('/:id/members/:memberId', authMiddleware, requireAdmin, workspaceController.removeMember);
 

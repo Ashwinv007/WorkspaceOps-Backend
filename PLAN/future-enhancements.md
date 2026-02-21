@@ -1,9 +1,130 @@
 # Future Enhancements & Performance Optimizations
 
-**Last Updated:** 2026-02-17  
-**Source:** Document Module Test Report + Implementation Analysis
+**Last Updated:** 2026-02-21
+**Source:** Document Module Test Report + Implementation Analysis + Production Issues Analysis
 
 This document tracks planned enhancements, performance optimizations, and technical debt items identified during module implementation and testing.
+
+---
+
+## Production Hardening (Deferred — High Priority)
+
+These items were identified during the 2026-02-21 production issues analysis. The critical items (race conditions, Socket.io for critical events, idempotency, optimistic locking) were implemented. The following were deferred to reduce scope.
+
+### Security: Rate Limiting
+**Priority:** P1 — Implement before production launch
+**Effort:** Low (< 1 day)
+
+No rate limiting exists on any endpoint. Vulnerability: invite flooding, upload storage exhaustion, audit log DoS.
+
+**Implementation:**
+```bash
+npm install express-rate-limit
+```
+```typescript
+import rateLimit from 'express-rate-limit';
+
+// Apply to mutation endpoints
+const inviteLimiter = rateLimit({ windowMs: 60_000, max: 10 });
+const uploadLimiter = rateLimit({ windowMs: 60_000, max: 20 });
+
+router.post('/members', inviteLimiter, authMiddleware, ...);
+router.post('/documents', uploadLimiter, authMiddleware, ...);
+```
+
+---
+
+### Security: JWT Token Invalidation + Refresh Tokens
+**Priority:** P1 — Implement before production launch
+**Effort:** Medium (2-3 days)
+
+Current tokens are valid for 24h with no revocation mechanism. A removed workspace member can use their token for up to 24h after removal.
+
+**Implementation Plan:**
+1. Redis-based token blacklist: on member removal/role degradation, add token to blacklist with TTL = remaining token lifetime
+2. `authMiddleware` checks blacklist before accepting token
+3. Add refresh token support: 15-min access token + 7-day refresh token with rotation
+4. Add `POST /auth/logout` endpoint to blacklist token immediately
+
+**Dependencies:**
+```bash
+npm install ioredis @types/ioredis
+```
+
+---
+
+### Reliability: Health Check + Graceful Shutdown
+**Priority:** P1 — Needed for container deployments
+**Effort:** Low (< 1 day)
+
+No SIGTERM handler — Kubernetes/PM2 kills the process mid-request. Already has `/health` route but no graceful shutdown.
+
+**Implementation:**
+```typescript
+// In server.ts — handle graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received. Closing server...');
+  server.close(async () => {
+    await mongoose.connection.close();
+    process.exit(0);
+  });
+  // Force close after 10s if requests don't finish
+  setTimeout(() => process.exit(1), 10_000);
+});
+```
+
+---
+
+### Performance: Overview Single Aggregation Pipeline
+**Priority:** P2
+**Effort:** Low (half day)
+
+Current `GetWorkspaceOverview` fires 8 separate queries in parallel via `Promise.all`. The derived `documentValid = total - expiring - expired` calculation can go negative if a document's expiry status changes between the queries. Also inefficient.
+
+**Fix:** Replace with a single `$facet` aggregation pipeline that atomically counts all document statuses in one query.
+
+**File:** `src/modules/overview/application/use-cases/GetWorkspaceOverview.ts`
+
+---
+
+### Reliability: GetLinkedDocuments Phantom Reads
+**Priority:** P2
+**Effort:** Low (half day)
+
+When a document is deleted just after being linked, `GetLinkedDocuments` fetches the link (exists), then fetches the document (returns null), and silently omits it from results. User sees an incomplete list with no explanation.
+
+**Fix:** Join links and documents in a single aggregation using `$lookup`, so orphaned links are naturally excluded.
+
+**File:** `src/modules/work-item/infrastructure/mongoose/WorkItemDocumentRepositoryImpl.ts`
+
+---
+
+### Reliability: Cascade Delete Race (Work Item)
+**Priority:** P2
+**Effort:** High (requires replica set transactions — already available on Atlas)
+
+`DeleteWorkItem` first deletes document links, then deletes the work item. If the second step fails, links are orphaned. Also, a concurrent unlink request between the two steps will fail unnecessarily.
+
+**Fix:** Wrap both steps in a MongoDB transaction (same pattern as DocumentType transactions implemented in this session).
+
+**File:** `src/modules/work-item/application/use-cases/DeleteWorkItem.ts`
+
+---
+
+### Real-Time: Deferred Socket.io Events
+**Priority:** P3
+**Effort:** Low (1 day — infrastructure is already in place)
+
+The Socket.io infrastructure is implemented. These additional events just need to be added to the `AuditAction` → socket event mapping in `AuditLogServiceImpl.ts`:
+
+| Event | Socket Event | Frontend Query Key |
+|-------|-------------|-------------------|
+| Work item updated | `work-item:updated` | `['work-items', workspaceId]` |
+| Overview data changed | `overview:updated` | `['overview', workspaceId]` |
+| Audit log created | `audit-log:created` | `['audit-logs', workspaceId]` |
+| Document expiry changed | `document:expiry-changed` | `['documents', workspaceId]` |
+
+---
 
 ---
 

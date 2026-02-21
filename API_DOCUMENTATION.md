@@ -67,8 +67,9 @@ Each endpoint description states the **minimum** role required.
 | Document       | Direct object with `expiryStatus`, `downloadUrl`|
 | Document list  | `{ documents: [...], count }`                   |
 | Work Item Type | Direct object                                   |
+| Work Item Type list | `{ workItemTypes: [...], count }`          |
 | Work Item      | Direct object                                   |
-| Work Item list | Direct array                                    |
+| Work Item list | `{ workItems: [...], count }`                   |
 | Audit Log list | `{ total, limit, offset, logs: [...] }`        |
 | Overview       | `{ workspaceId, entities, documents, workItems, documentTypes, workItemTypes }` |
 
@@ -574,7 +575,7 @@ curl -X POST http://localhost:4000/workspaces/ws_xyz/documents \
   "entityId": "ent_123",
   "fileName": "passport.pdf",
   "fileUrl": "/uploads/ws_xyz/passport.pdf",
-  "downloadUrl": "/workspaces/ws_xyz/documents/doc_xyz/download",
+  "downloadUrl": "http://localhost:4000/workspaces/ws_xyz/documents/doc_xyz/download",
   "mimeType": "application/pdf",
   "fileSize": 204800,
   "metadata": {

@@ -1,15 +1,19 @@
 import { IWorkItemRepository } from '../../domain/repositories/IWorkItemRepository';
 import { IWorkItemDocumentRepository } from '../../domain/repositories/IWorkItemDocumentRepository';
 import { WorkItemDocument } from '../../domain/entities/WorkItemDocument';
-import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { NotFoundError } from '../../../../shared/domain/errors/AppError';
 import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
 import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * LinkDocument Use Case
- * 
+ *
  * Links a document to a work item.
  * Validates both exist in the same workspace and prevents duplicate links.
+ *
+ * Duplicate link prevention is enforced by the DB unique index on (workItemId, documentId).
+ * The repository catches error code 11000 and re-throws as ValidationError — so we
+ * do NOT do a pre-check exists() here (removing the TOCTOU race condition).
  */
 export class LinkDocument {
     constructor(
@@ -32,16 +36,11 @@ export class LinkDocument {
             throw new NotFoundError('Document not found in this workspace');
         }
 
-        // 3. Check if already linked (mirrors SQL UNIQUE constraint)
-        const alreadyLinked = await this.workItemDocumentRepo.exists(workItemId, documentId);
-        if (alreadyLinked) {
-            throw new ValidationError('Document is already linked to this work item');
-        }
-
-        // 4. Create the link
+        // 3. Create the link — the repository catches duplicate key (11000) on the
+        //    unique index { workItemId, documentId } and throws ValidationError.
         const link = await this.workItemDocumentRepo.link(workItemId, documentId);
 
-        // 5. Audit log (fire-and-forget)
+        // 4. Audit log (fire-and-forget)
         if (userId) {
             await this.auditLogService?.log({
                 workspaceId,

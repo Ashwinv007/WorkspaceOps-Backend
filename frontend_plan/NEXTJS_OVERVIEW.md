@@ -417,6 +417,44 @@ function SomeComponent() {
 
 This means the URL IS the source of truth for which workspace you're in — no need to store it separately.
 
+### 3. Real-Time Updates (SocketProvider)
+
+`context/SocketProvider.tsx` wraps the workspace layout. It connects to the Socket.io server (same port 4000 as REST, different protocol), joins the `workspace:{workspaceId}` room, and listens for 8 events. When an event fires, it calls `queryClient.invalidateQueries()` — which triggers the same TanStack Query re-fetch you'd trigger manually after a mutation.
+
+```tsx
+// context/SocketProvider.tsx — simplified concept
+useEffect(() => {
+  const socket = getSocket();               // connects to ws://localhost:4000 with JWT
+  socket.emit('join-workspace', workspaceId); // joins the workspace room
+
+  socket.on('work-item:status-changed', () => {
+    queryClient.invalidateQueries({ queryKey: ['work-items', workspaceId] });
+  });
+  // ... 7 more events (see PLAN/realtime-infrastructure-guide.md)
+
+  return () => {
+    socket.emit('leave-workspace', workspaceId);
+    socket.off('work-item:status-changed');
+    // ... clean up other listeners
+  };
+}, [workspaceId, queryClient]);
+```
+
+**Key insight:** No page needs to know about sockets. The SocketProvider runs silently in the layout. Any page that already uses `useQuery(['work-items', workspaceId])` will automatically re-render when the event fires — zero changes to individual pages.
+
+**8 real-time events handled:**
+
+| Socket Event | `invalidateQueries` key |
+|---|---|
+| `work-item:status-changed` | `['work-items', workspaceId]` |
+| `work-item:document-linked` | `['work-item', targetId]` |
+| `work-item:document-unlinked` | `['work-item', targetId]` |
+| `document:uploaded` | `['documents', workspaceId]` |
+| `document:deleted` | `['documents', workspaceId]` |
+| `workspace:member-invited` | `['members', workspaceId]` |
+| `workspace:member-updated` | `['members', workspaceId]` |
+| `workspace:member-removed` | `['members', workspaceId]` + `['workspaces']` |
+
 ---
 
 ## Complete Data Flow — End-to-End Example
@@ -533,7 +571,7 @@ workspaceops-frontend/
 │   │       │   └── page.tsx              ← /workspaces — workspace selection screen
 │   │       │
 │   │       └── [workspaceId]/            ← All workspace-scoped pages
-│   │           ├── layout.tsx            ← AppShell: sidebar + top bar, provides WorkspaceContext
+│   │           ├── layout.tsx            ← AppShell: sidebar + top bar, provides WorkspaceContext, wraps SocketProvider
 │   │           │
 │   │           ├── dashboard/            ← MODULE: Dashboard
 │   │           │   └── page.tsx
@@ -637,6 +675,9 @@ workspaceops-frontend/
 │   │   │   ├── audit-logs.ts             ← fetchAuditLogs
 │   │   │   └── overview.ts               ← fetchOverview → returns { workspaceId, entities: { total, byRole }, documents: { total, byStatus }, workItems: { total, byStatus }, documentTypes: OverviewDocumentType[], workItemTypes: OverviewWorkItemType[] }
 │   │   │
+│   │   ├── socket/                       ← Socket.io client
+│   │   │   └── socketClient.ts           ← Singleton: connect with JWT auth, getSocket(), disconnectSocket()
+│   │   │
 │   │   ├── hooks/                        ← Custom React hooks (shared logic)
 │   │   │   ├── useWorkspaceRole.ts       ← Returns userRole string from WorkspaceContext
 │   │   │   └── useDownloadDocument.ts    ← fetch + Authorization header + Blob download
@@ -654,7 +695,8 @@ workspaceops-frontend/
 │   │
 │   └── context/
 │       ├── AuthContext.tsx               ← Provides: { user, login(), logout() }
-│       └── WorkspaceContext.tsx          ← Provides: { workspaceId, userRole }
+│       ├── WorkspaceContext.tsx          ← Provides: { workspaceId, userRole }
+│       └── SocketProvider.tsx            ← Connects to Socket.io, joins workspace room, maps 8 events → invalidateQueries
 │
 ├── public/
 │   └── favicon.ico
@@ -726,6 +768,12 @@ app/(app)/[workspaceId]/layout.tsx
   - Reads workspaceId from params
   - Fetches workspaces list to get userRole for this workspace
   - Provides WorkspaceContext({ workspaceId, userRole })
+  - Wraps children in <SocketProvider workspaceId={workspaceId}>
+      → getSocket() connects to ws://localhost:4000 with JWT
+      → socket.emit('join-workspace', workspaceId)
+      → on 'work-item:status-changed' → invalidateQueries(['work-items', workspaceId])
+      → on 'workspace:member-invited' → invalidateQueries(['members', workspaceId])
+      → (and 6 other events — see PLAN/realtime-infrastructure-guide.md)
   - Renders {children} slot
            │
            ▼

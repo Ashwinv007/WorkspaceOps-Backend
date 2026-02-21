@@ -466,6 +466,7 @@ Three side-by-side columns. Column header shows the status name + count badge:
   - DRAFT card → "Start →" button → calls PATCH status to ACTIVE
   - ACTIVE card → "Complete ✓" button (green) + "Unstart" ghost button → PATCH to COMPLETED or DRAFT
   - COMPLETED card → "Reopen" button → calls PATCH status to ACTIVE
+  - **409 ConflictError:** Show a toast "Status changed by another user — refreshing" and re-fetch. The SocketProvider will usually have already updated the card via `work-item:status-changed`.
 
 ---
 
@@ -514,6 +515,7 @@ Three side-by-side columns. Column header shows the status name + count badge:
 - If `status === "DRAFT"`: one button — "Start Work Item →" (blue primary) → calls PATCH to ACTIVE
 - If `status === "ACTIVE"`: two buttons — "Mark as Complete ✓" (green) → PATCH to COMPLETED, and "Move back to Draft" (ghost/outline) → PATCH to DRAFT
 - If `status === "COMPLETED"`: one button — "Reopen Work Item" (outline) → calls PATCH to ACTIVE
+- **409 ConflictError:** If the API returns 409, it means another user changed the status at the same time. Show a toast: "Status was changed by someone else — refreshing." and immediately call `queryClient.invalidateQueries({ queryKey: ['work-item', id] })`. The SocketProvider will usually have already refreshed the view via the `work-item:status-changed` event before the 409 appears.
 
 **Info grid (2 columns):**
 - Entity: entity name as a clickable link → navigates to entity detail

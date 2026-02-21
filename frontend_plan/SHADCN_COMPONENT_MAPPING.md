@@ -487,6 +487,7 @@ npm install date-fns           # Date formatting (display only — no calculatio
 npm install @tanstack/react-query
 npm install react-hook-form zod @hookform/resolvers
 npm install axios
+npm install socket.io-client   # Real-time WebSocket updates (workspace rooms)
 ```
 
 ### Color Exception Summary (for reference during implementation)

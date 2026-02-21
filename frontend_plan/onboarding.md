@@ -121,11 +121,78 @@ Now you can upload a file linked to that entity and document type.
 
 ---
 
+## ⚡ Real-Time Updates (Socket.io)
+
+The backend exposes a Socket.io server on the **same port (4000)** as the REST API. It uses WebSockets to push live updates to all users in a workspace without polling.
+
+### How to Connect
+
+```bash
+npm install socket.io-client
+```
+
+```typescript
+// src/lib/socket/socketClient.ts
+import { io, Socket } from 'socket.io-client';
+
+let socket: Socket | null = null;
+
+export function getSocket(): Socket {
+  if (!socket) {
+    const token = localStorage.getItem('workspaceops_token');
+    socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', {
+      auth: { token },   // same JWT used for REST
+      autoConnect: true,
+    });
+  }
+  return socket;
+}
+```
+
+### How Rooms Work
+
+Each workspace is a **room** on the server — named `workspace:{workspaceId}`. After connecting, emit `join-workspace` to subscribe to that workspace's events:
+
+```typescript
+const socket = getSocket();
+socket.emit('join-workspace', workspaceId);
+
+// Listen for updates
+socket.on('work-item:status-changed', (data) => {
+  queryClient.invalidateQueries({ queryKey: ['work-items', workspaceId] });
+});
+```
+
+### Events the Backend Emits
+
+| Event | When fired | Suggested action |
+|---|---|---|
+| `work-item:status-changed` | Work item status changes | Invalidate `['work-items', workspaceId]` |
+| `work-item:document-linked` | Document linked to work item | Invalidate `['work-item', data.targetId]` |
+| `work-item:document-unlinked` | Document unlinked | Invalidate `['work-item', data.targetId]` |
+| `document:uploaded` | New document uploaded | Invalidate `['documents', workspaceId]` |
+| `document:deleted` | Document deleted | Invalidate `['documents', workspaceId]` |
+| `workspace:member-invited` | Member invited | Invalidate `['members', workspaceId]` |
+| `workspace:member-updated` | Member role changed | Invalidate `['members', workspaceId]` |
+| `workspace:member-removed` | Member removed | Invalidate `['members', workspaceId]` |
+
+The `SocketProvider` context handles all of this — wrap the workspace layout with it and no individual page needs to import socket code directly. See `NEXTJS_OVERVIEW.md` for the full pattern.
+
+### Environment Variable
+
+Add to your `.env.local`:
+```
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+---
+
 ## 💡 Frontend Tips
 1.  **Error Handling**: The API returns standard HTTP codes.
     - `400`: Check your payload validation.
     - `401`: Redirect to Login.
     - `403`: Show "Access Denied" toast.
+    - `409`: Conflict — two cases: (a) duplicate (e.g. user already a member) → show inline error, (b) concurrent update (e.g. two users changed work item status at the same time) → show toast "Changed by another user, refreshing" and re-fetch.
 2.  **Dates**: All dates are returned in ISO 8601 format (`2024-03-15T10:00:00Z`). Use a library like `date-fns` or `dayjs` to format them.
 3.  **File Downloads**: The `/documents/:id/download` endpoint returns a file stream. You'll need to handle the binary response to trigger a browser download (e.g., creating a temporary `<a>` tag with `URL.createObjectURL`).
 

@@ -9,9 +9,13 @@ import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
 
 /**
  * Invite User to Workspace Use Case (Application Layer)
- * 
+ *
  * Adds a user to a workspace with a specific role.
  * Validates that workspace exists, user exists, and user is not already a member.
+ *
+ * Duplicate membership is enforced by the DB unique index on (workspaceId, userId).
+ * The repository catches error code 11000 and re-throws as ValidationError — so we
+ * do NOT do a pre-check here (removing the TOCTOU race condition).
  */
 
 export interface InviteUserToWorkspaceDTO {
@@ -41,36 +45,27 @@ export class InviteUserToWorkspace {
             throw new NotFoundError('Workspace not found');
         }
 
-        // 4. Resolve email → user (throws 404 if email not registered)
+        // 3. Resolve email → user (throws 404 if email not registered)
         const user = await this.userRepo.findByEmail(dto.invitedEmail);
         if (!user) {
             throw new NotFoundError('No user found with that email address');
         }
 
-        // 5. Check if user is already a member
-        const existingMembership = await this.workspaceMemberRepo.findByWorkspaceIdAndUserId(
-            dto.workspaceId,
-            user.id
-        );
-
-        if (existingMembership) {
-            throw new ValidationError('User is already a member of this workspace');
-        }
-
-        // 6. Validate role
+        // 4. Validate role
         const validRoles: WorkspaceRole[] = ['OWNER', 'ADMIN', 'MEMBER', 'VIEWER'];
         if (!validRoles.includes(dto.role)) {
             throw new ValidationError('Invalid role');
         }
 
-        // 7. Create workspace membership (store resolved userId internally)
+        // 5. Create workspace membership — the repository catches duplicate key (11000)
+        //    and throws ValidationError('User is already a member of this workspace')
         const membership = await this.workspaceMemberRepo.create({
             workspaceId: dto.workspaceId,
             userId: user.id,
             role: dto.role
         });
 
-        // 8. Audit log (fire-and-forget)
+        // 6. Audit log (fire-and-forget)
         await this.auditLogService?.log({
             workspaceId: dto.workspaceId,
             userId: dto.invitedByUserId,

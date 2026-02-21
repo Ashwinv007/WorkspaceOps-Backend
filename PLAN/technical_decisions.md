@@ -678,10 +678,19 @@ OWNER   > ADMIN   > MEMBER   > VIEWER
 
 ---
 
-## 8. MongoDB Transactions vs Standalone Database
+## 8. MongoDB Transactions — Now Enabled via MongoDB Atlas
 
 ### Decision
-Temporarily disabled MongoDB transactions for MVP deployment on standalone MongoDB. Will re-enable when deploying with replica set.
+~~Temporarily disabled MongoDB transactions for MVP deployment on standalone MongoDB.~~
+
+**Updated (2026-02-21):** Transactions are **fully enabled**. The project migrated to **MongoDB Atlas**, which runs every cluster (including the free M0 tier) as a **3-node replica set**. This satisfies the replica set requirement for multi-document ACID transactions.
+
+**What changed:**
+- `DocumentTypeRepositoryImpl.create()` — wrapped in a transaction: document type + all fields are created atomically
+- `DocumentTypeRepositoryImpl.delete()` — wrapped in a transaction: fields deleted + parent deleted atomically
+- The old `// TODO: Re-enable when using MongoDB replica set` comments are removed
+
+The `mongodb+srv://...cluster0.jqpktac.mongodb.net` connection string confirms Atlas — no additional infrastructure setup is needed.
 
 ### What Are Transactions?
 
@@ -988,22 +997,41 @@ async create(documentType, fields) {
 
 - "MongoDB requires replica sets for transactions because transactions need distributed consensus, oplog for rollback, and write concern guarantees"
 - "Standalone MongoDB has no oplog and can't achieve majority consensus with only one node"
-- "For MVP, we accept the small risk of orphaned records in exchange for simpler deployment"
-- "Sequential operations work 99.9% of the time - failures are rare and recoverable"
-- "In production, we'll deploy a 3-node replica set and re-enable transactions for ACID guarantees"
+- "We use MongoDB Atlas which runs every cluster as a 3-node replica set — even on the free tier — so transactions are available immediately with no extra infrastructure"
+- "Our `DocumentType` create and delete operations are now fully ACID — if field creation fails after the parent is created, the entire operation rolls back atomically"
+- "The trade-off is a slight performance overhead from transaction coordination, but data integrity is more valuable than raw write speed for our use case"
+
+### Current Status
+
+**Transactions are active.** The implementation in `DocumentTypeRepositoryImpl.ts`:
+
+```typescript
+// create() — atomic: both parent and fields succeed or both roll back
+const session = await mongoose.startSession();
+session.startTransaction();
+try {
+  const [docTypeDoc] = await DocumentTypeModel.create([{...}], { session });
+  await DocumentTypeFieldModel.insertMany([...], { session });
+  await session.commitTransaction();
+} catch (err) {
+  await session.abortTransaction();
+  throw err;
+} finally {
+  session.endSession();
+}
+```
 
 ### Trade-offs Summary
 
-| Aspect | Standalone (Current) | Replica Set (Production) |
-|--------|---------------------|--------------------------|
-| **Deployment** | Simple (1 server) | Complex (3+ servers) |
-| **Cost** | Low | Higher (3x servers) |
+| Aspect | Previous (Standalone) | Current (Atlas Replica Set) |
+|--------|----------------------|-----------------------------|
+| **Deployment** | Simple (1 server) | Managed by Atlas (no ops work) |
+| **Cost** | Free (local) | Free tier available (M0) |
 | **Transactions** | ❌ Not supported | ✅ Full ACID support |
 | **Data Safety** | ⚠️ Risk of orphans | ✅ Atomic operations |
-| **High Availability** | ❌ Single point of failure | ✅ Auto-failover |
-| **Performance** | Fast (no replication) | Slightly slower (replication overhead) |
-| **MVP Suitability** | ✅ Acceptable | ⚠️ Overkill |
-| **Production Suitability** | ❌ Not recommended | ✅ Required |
+| **High Availability** | ❌ Single point of failure | ✅ Auto-failover across 3 nodes |
+| **Performance** | Fast (no replication) | Slight overhead (replication) |
+| **Production Suitability** | ❌ Not recommended | ✅ Production-ready |
 
 ---
 

@@ -7,4 +7,6 @@ export interface IWorkspaceMemberRepository {
     findByWorkspaceId(workspaceId: string): Promise<WorkspaceMember[]>;
     update(id: string, data: Partial<WorkspaceMember>): Promise<WorkspaceMember>;
     delete(id: string): Promise<void>;
+    /** Atomic count of members with a given role — used to enforce last-owner constraint. */
+    countByRole(workspaceId: string, role: string): Promise<number>;
 }

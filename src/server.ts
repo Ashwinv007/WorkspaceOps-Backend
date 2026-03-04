@@ -11,12 +11,20 @@ const startServer = async () => {
   const httpServer = http.createServer(app);
 
   // Attach Socket.io — same port handles both REST (HTTP) and real-time (WebSocket)
-  createSocketServer(httpServer);
+  const io = createSocketServer(httpServer);
 
   httpServer.listen(env.port, () => {
     console.log(`Server running on port ${env.port}`);
     console.log(`Socket.io enabled — ws://localhost:${env.port}`);
   });
+
+  // Graceful shutdown — release port cleanly so ts-node-dev can respawn without EADDRINUSE
+  const shutdown = () => {
+    io.close();
+    httpServer.close(() => process.exit(0));
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 };
 
 startServer();

@@ -29,6 +29,7 @@ export class Entity {
         public readonly workspaceId: string,
         public readonly name: string,
         public readonly role: EntityRole,
+        public readonly parentId?: string,
         public readonly createdAt?: Date
     ) {
         this.validate();

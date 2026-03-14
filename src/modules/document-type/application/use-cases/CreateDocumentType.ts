@@ -21,6 +21,7 @@ export interface CreateDocumentTypeInput {
     name: string;
     hasMetadata: boolean;
     hasExpiry: boolean;
+    entityType?: string;
     fields: {
         fieldKey: string;
         fieldType: FieldType;
@@ -90,7 +91,8 @@ export class CreateDocumentType {
             input.workspaceId,
             input.name.trim(),
             input.hasMetadata,
-            input.hasExpiry
+            input.hasExpiry,
+            input.entityType
         );
 
         // 8. Prepare field data (don't create entities yet - documentTypeId not known)
@@ -101,22 +103,16 @@ export class CreateDocumentType {
             isExpiryField: f.isExpiryField
         }));
 
-        // 9. Persist to database (atomic transaction)
-        const createdDocType = await this.documentTypeRepo.create(documentType, fieldData);
+        // 9. Persist to database (atomic transaction — returns type + fields in one operation)
+        const result = await this.documentTypeRepo.create(documentType, fieldData);
 
-        // 10. Fetch with fields
-        const result = await this.documentTypeRepo.findByIdWithFields(createdDocType.id);
-        if (!result) {
-            throw new Error('Failed to retrieve created document type');
-        }
-
-        // 11. Audit log (fire-and-forget)
+        // 10. Audit log (fire-and-forget)
         await this.auditLogService?.log({
             workspaceId: input.workspaceId,
             userId: input.userId,
             action: AuditAction.DOCUMENT_TYPE_CREATED,
             targetType: 'DocumentType',
-            targetId: createdDocType.id,
+            targetId: result.documentType.id,
         });
 
         return result;

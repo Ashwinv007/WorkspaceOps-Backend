@@ -20,7 +20,7 @@ export class DocumentTypeRepositoryImpl implements IDocumentTypeRepository {
     async create(
         documentType: Omit<DocumentType, 'id' | 'createdAt'>,
         fields: Omit<DocumentTypeField, 'id' | 'documentTypeId'>[]
-    ): Promise<DocumentType> {
+    ): Promise<{ documentType: DocumentType; fields: DocumentTypeField[] }> {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -28,11 +28,13 @@ export class DocumentTypeRepositoryImpl implements IDocumentTypeRepository {
                 workspaceId: documentType.workspaceId,
                 name: documentType.name,
                 hasMetadata: documentType.hasMetadata,
-                hasExpiry: documentType.hasExpiry
+                hasExpiry: documentType.hasExpiry,
+                ...(documentType.entityType && { entityType: documentType.entityType })
             }], { session });
 
+            let createdFields: DocumentTypeField[] = [];
             if (fields.length > 0) {
-                await DocumentTypeFieldModel.insertMany(
+                const fieldDocs = await DocumentTypeFieldModel.insertMany(
                     fields.map(f => ({
                         documentTypeId: docTypeDoc._id,
                         fieldKey: f.fieldKey,
@@ -42,10 +44,14 @@ export class DocumentTypeRepositoryImpl implements IDocumentTypeRepository {
                     })),
                     { session }
                 );
+                createdFields = fieldDocs.map(f => this.toDomainField(f));
             }
 
             await session.commitTransaction();
-            return this.toDomainDocumentType(docTypeDoc);
+            return {
+                documentType: this.toDomainDocumentType(docTypeDoc),
+                fields: createdFields
+            };
         } catch (err) {
             await session.abortTransaction();
             throw err;
@@ -197,6 +203,7 @@ export class DocumentTypeRepositoryImpl implements IDocumentTypeRepository {
             doc.name,
             doc.hasMetadata,
             doc.hasExpiry,
+            doc.entityType ?? undefined,
             doc.createdAt
         );
     }

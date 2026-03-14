@@ -6,6 +6,7 @@ import { InviteUserToWorkspace, InviteUserToWorkspaceDTO } from '../../applicati
 import { UpdateWorkspaceMember, UpdateWorkspaceMemberDTO } from '../../application/use-cases/UpdateWorkspaceMember';
 import { RemoveUserFromWorkspace, RemoveUserFromWorkspaceDTO } from '../../application/use-cases/RemoveUserFromWorkspace';
 import { WorkspacePresenter } from '../presenters/WorkspacePresenter';
+import { IUserRepository } from '../../../auth/domain/repositories/IUserRepository';
 
 /**
  * Workspace Controller (Interfaces Layer)
@@ -21,7 +22,8 @@ export class WorkspaceController {
         private readonly inviteUserUseCase: InviteUserToWorkspace,
         private readonly updateMemberUseCase: UpdateWorkspaceMember,
         private readonly removeMemberUseCase: RemoveUserFromWorkspace,
-        private readonly presenter: WorkspacePresenter
+        private readonly presenter: WorkspacePresenter,
+        private readonly userRepo: IUserRepository
     ) { }
 
     /**
@@ -72,14 +74,23 @@ export class WorkspaceController {
                 requestingUserId: req.user!.userId
             });
 
+            const userIds = members.map(m => m.userId);
+            const users = await this.userRepo.findManyByIds(userIds);
+            const userMap = new Map(users.map(u => [u.id, u]));
+
             res.status(200).json({
-                members: members.map(m => ({
-                    id: m.id,
-                    workspaceId: m.workspaceId,
-                    userId: m.userId,
-                    role: m.role,
-                    createdAt: m.createdAt
-                })),
+                members: members.map(m => {
+                    const user = userMap.get(m.userId);
+                    return {
+                        id: m.id,
+                        workspaceId: m.workspaceId,
+                        userId: m.userId,
+                        userEmail: user?.email ?? null,
+                        userName: user?.name ?? null,
+                        role: m.role,
+                        createdAt: m.createdAt
+                    };
+                }),
                 count: members.length
             });
         } catch (error) {

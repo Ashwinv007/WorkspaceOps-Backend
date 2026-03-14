@@ -7,7 +7,7 @@ export const connectDB = async () => {
     const host = mongoose.connection.host;
     console.log(`MongoDB connected → ${host}`);
   } catch (err) {
-    console.error("MongoDB connection failed");
+    console.error("MongoDB connection failed" + err);
     process.exit(1);
   }
 };

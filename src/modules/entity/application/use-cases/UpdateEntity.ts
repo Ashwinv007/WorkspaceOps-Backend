@@ -1,6 +1,6 @@
 import { IEntityRepository } from '../../domain/repositories/IEntityRepository';
 import { Entity, EntityRole } from '../../domain/entities/Entity';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../../../shared/domain/errors/AppError';
+import { NotFoundError, ValidationError, ForbiddenError, ConflictError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
 import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
@@ -18,6 +18,7 @@ export interface UpdateEntityDTO {
     userId: string;
     name?: string;
     role?: EntityRole;
+    parentId?: string | null;
 }
 
 export class UpdateEntity {
@@ -49,7 +50,7 @@ export class UpdateEntity {
         }
 
         // 5. Validate updates
-        const updates: { name?: string; role?: EntityRole } = {};
+        const updates: { name?: string; role?: EntityRole; parentId?: string | null } = {};
 
         if (dto.name !== undefined) {
             if (!dto.name || dto.name.trim().length === 0) {
@@ -70,12 +71,35 @@ export class UpdateEntity {
             updates.role = dto.role;
         }
 
+        if (dto.parentId !== undefined) {
+            updates.parentId = dto.parentId; // null clears the parent
+        }
+
         // 6. Ensure at least one field is being updated
         if (Object.keys(updates).length === 0) {
             throw new ValidationError('No fields to update');
         }
 
-        // 7. Update entity
+        // 7. Enforce at most one SELF entity per workspace (only when changing role to SELF)
+        if (updates.role === EntityRole.SELF && existingEntity.role !== EntityRole.SELF) {
+            const existing = await this.entityRepo.findByWorkspaceIdFiltered(existingEntity.workspaceId, EntityRole.SELF);
+            if (existing.length > 0) {
+                throw new ConflictError('A SELF entity already exists in this workspace.');
+            }
+        }
+
+        // 8. Validate parent entity role — parent cannot be EMPLOYEE
+        if (dto.parentId !== undefined && dto.parentId !== null) {
+            const parent = await this.entityRepo.findById(dto.parentId);
+            if (!parent) {
+                throw new NotFoundError('Parent entity not found');
+            }
+            if (parent.role === EntityRole.EMPLOYEE) {
+                throw new ValidationError('Parent entity cannot be an EMPLOYEE.');
+            }
+        }
+
+        // 9. Update entity
         const updatedEntity = await this.entityRepo.update(dto.id, updates);
 
         // 8. Audit log (fire-and-forget)

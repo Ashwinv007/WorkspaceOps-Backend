@@ -9,6 +9,7 @@ import { RecordAudit } from '../../application/use-cases/RecordAudit';
 // Repository and service
 import { AuditLogRepositoryImpl } from '../mongoose/AuditLogRepositoryImpl';
 import { AuditLogServiceImpl } from '../mongoose/AuditLogServiceImpl';
+import { UserRepositoryImpl } from '../../../auth/infrastructure/mongoose/UserRepositoryImpl';
 
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
@@ -25,8 +26,9 @@ import { requireAdmin } from '../../../../common/middleware/rbac.middleware';
 
 const router = Router();
 
-// 1. Repository
+// 1. Repositories
 const auditLogRepo = new AuditLogRepositoryImpl();
+const userRepo = new UserRepositoryImpl();
 
 // 2. Use cases
 const recordAuditUC = new RecordAudit(auditLogRepo);
@@ -37,7 +39,7 @@ export const auditLogService = new AuditLogServiceImpl(recordAuditUC);
 
 // 4. Controller
 const presenter = new AuditLogPresenter();
-const controller = new AuditLogController(getAuditLogsUC, presenter);
+const controller = new AuditLogController(getAuditLogsUC, presenter, userRepo);
 
 // 5. Routes
 router.get(

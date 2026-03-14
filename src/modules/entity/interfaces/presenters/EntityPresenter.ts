@@ -15,6 +15,7 @@ export class EntityPresenter {
             workspaceId: entity.workspaceId,
             name: entity.name,
             role: entity.role,
+            parentId: entity.parentId ?? null,
             createdAt: entity.createdAt
         };
     }

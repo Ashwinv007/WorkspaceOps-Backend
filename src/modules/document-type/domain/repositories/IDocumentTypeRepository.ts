@@ -9,13 +9,13 @@ import { DocumentTypeField } from '../entities/DocumentTypeField';
  */
 export interface IDocumentTypeRepository {
     /**
-     * Create a new document type with fields
-     * This should be a transactional operation
+     * Create a new document type with fields atomically.
+     * Returns both the created document type and its persisted fields (with IDs).
      */
     create(
         documentType: Omit<DocumentType, 'id' | 'createdAt'>,
         fields: Omit<DocumentTypeField, 'id' | 'documentTypeId'>[]
-    ): Promise<DocumentType>;
+    ): Promise<{ documentType: DocumentType; fields: DocumentTypeField[] }>;
 
     /**
      * Find document type by ID (without fields)

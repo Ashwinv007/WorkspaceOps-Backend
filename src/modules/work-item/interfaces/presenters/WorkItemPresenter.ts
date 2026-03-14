@@ -2,10 +2,11 @@ import { WorkItemType } from '../../domain/entities/WorkItemType';
 import { WorkItem } from '../../domain/entities/WorkItem';
 import { WorkItemDocument } from '../../domain/entities/WorkItemDocument';
 import { LinkedDocument } from '../../application/use-cases/GetLinkedDocuments';
+import { User } from '../../../auth/domain/entities/User';
 
 /**
  * WorkItemPresenter
- * 
+ *
  * Formats domain entities into API response objects.
  */
 export class WorkItemPresenter {
@@ -32,13 +33,16 @@ export class WorkItemPresenter {
 
     // --- Work Item ---
 
-    presentWorkItem(item: WorkItem, linkedDocumentIds?: string[]) {
+    presentWorkItem(item: WorkItem, linkedDocumentIds?: string[], userMap?: Map<string, User>) {
+        const user = item.assignedToUserId ? userMap?.get(item.assignedToUserId) : undefined;
         return {
             id: item.id,
             workspaceId: item.workspaceId,
             workItemTypeId: item.workItemTypeId,
             entityId: item.entityId,
             assignedToUserId: item.assignedToUserId,
+            assignedToUserEmail: user?.email ?? null,
+            assignedToUserName: user?.name ?? null,
             title: item.title,
             description: item.description || null,
             status: item.status,
@@ -51,9 +55,9 @@ export class WorkItemPresenter {
         };
     }
 
-    presentWorkItems(items: WorkItem[]) {
+    presentWorkItems(items: WorkItem[], userMap?: Map<string, User>) {
         return {
-            workItems: items.map(i => this.presentWorkItem(i)),
+            workItems: items.map(i => this.presentWorkItem(i, undefined, userMap)),
             count: items.length
         };
     }

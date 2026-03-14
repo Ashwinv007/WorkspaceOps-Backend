@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { GetAuditLogs } from '../../application/use-cases/GetAuditLogs';
 import { AuditLogPresenter } from '../presenters/AuditLogPresenter';
 import { AuditLogFiltersDTO } from '../../application/dto/AuditLogDTO';
+import { IUserRepository } from '../../../auth/domain/repositories/IUserRepository';
 
 /**
  * AuditLogController
@@ -12,7 +13,8 @@ import { AuditLogFiltersDTO } from '../../application/dto/AuditLogDTO';
 export class AuditLogController {
     constructor(
         private readonly getAuditLogsUC: GetAuditLogs,
-        private readonly presenter: AuditLogPresenter
+        private readonly presenter: AuditLogPresenter,
+        private readonly userRepo: IUserRepository
     ) {
         this.getAuditLogs = this.getAuditLogs.bind(this);
     }
@@ -47,7 +49,12 @@ export class AuditLogController {
             };
 
             const result = await this.getAuditLogsUC.execute(workspaceId, filtersDTO);
-            res.status(200).json(this.presenter.presentAuditLogs(result, filtersDTO));
+
+            const userIds = [...new Set(result.logs.map(l => l.userId))];
+            const users = await this.userRepo.findManyByIds(userIds);
+            const userMap = new Map(users.map(u => [u.id, u]));
+
+            res.status(200).json(this.presenter.presentAuditLogs(result, filtersDTO, userMap));
         } catch (error) {
             next(error);
         }

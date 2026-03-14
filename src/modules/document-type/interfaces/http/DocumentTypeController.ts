@@ -40,7 +40,7 @@ export class DocumentTypeController {
     async createDocumentType(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const workspaceId = req.params.workspaceId as string;
-            const { name, hasMetadata, hasExpiry, fields } = req.body;
+            const { name, hasMetadata, hasExpiry, entityType, fields } = req.body;
 
             // Validate field types
             if (fields && Array.isArray(fields)) {
@@ -60,6 +60,7 @@ export class DocumentTypeController {
                 name,
                 hasMetadata: hasMetadata || false,
                 hasExpiry: hasExpiry || false,
+                entityType: entityType || undefined,
                 fields: fields || []
             });
 

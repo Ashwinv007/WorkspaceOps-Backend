@@ -17,10 +17,11 @@ import { WorkItemPresenter } from '../presenters/WorkItemPresenter';
 import { WorkItemStatus } from '../../domain/enums/WorkItemStatus';
 import { WorkItemPriority } from '../../domain/enums/WorkItemPriority';
 import { CreateWorkItemTypeDTO, CreateWorkItemDTO, UpdateWorkItemDTO, WorkItemFilters } from '../../application/dto/WorkItemDTO';
+import { IUserRepository } from '../../../auth/domain/repositories/IUserRepository';
 
 /**
  * WorkItemController
- * 
+ *
  * Handles all HTTP requests for work item types and work items.
  * 13 endpoints total (3 type + 10 item).
  */
@@ -40,7 +41,8 @@ export class WorkItemController {
         private readonly deleteWorkItemUC: DeleteWorkItem,
         private readonly workItemDocumentRepo: IWorkItemDocumentRepository,
         private readonly getLinkedDocumentsUC: GetLinkedDocuments,
-        private readonly presenter: WorkItemPresenter
+        private readonly presenter: WorkItemPresenter,
+        private readonly userRepo: IUserRepository
     ) {
         // Bind all methods to this instance
         this.createWorkItemType = this.createWorkItemType.bind(this);
@@ -140,7 +142,9 @@ export class WorkItemController {
             };
 
             const item = await this.createWorkItemUC.execute(dto);
-            res.status(201).json(this.presenter.presentWorkItem(item));
+            const user = await this.userRepo.findById(userId);
+            const userMap = user ? new Map([[user.id, user]]) : new Map();
+            res.status(201).json(this.presenter.presentWorkItem(item, undefined, userMap));
         } catch (error) {
             next(error);
         }
@@ -164,7 +168,10 @@ export class WorkItemController {
             if (priority) filters.priority = priority as WorkItemPriority;
 
             const items = await this.getWorkItemsUC.execute(workspaceId as string, filters);
-            res.json(this.presenter.presentWorkItems(items));
+            const userIds = [...new Set(items.map(i => i.assignedToUserId).filter(Boolean) as string[])];
+            const users = await this.userRepo.findManyByIds(userIds);
+            const userMap = new Map(users.map(u => [u.id, u]));
+            res.json(this.presenter.presentWorkItems(items, userMap));
         } catch (error) {
             next(error);
         }
@@ -183,7 +190,9 @@ export class WorkItemController {
             const links = await this.workItemDocumentRepo.findByWorkItem(id as string);
             const linkedDocumentIds = links.map(l => l.documentId);
 
-            res.json(this.presenter.presentWorkItem(item, linkedDocumentIds));
+            const user = item.assignedToUserId ? await this.userRepo.findById(item.assignedToUserId) : null;
+            const userMap = user ? new Map([[user.id, user]]) : new Map();
+            res.json(this.presenter.presentWorkItem(item, linkedDocumentIds, userMap));
         } catch (error) {
             next(error);
         }
@@ -197,7 +206,10 @@ export class WorkItemController {
         try {
             const { workspaceId, entityId } = req.params;
             const items = await this.getWorkItemsByEntityUC.execute(entityId as string, workspaceId as string);
-            res.json(this.presenter.presentWorkItems(items));
+            const userIds = [...new Set(items.map(i => i.assignedToUserId).filter(Boolean) as string[])];
+            const users = await this.userRepo.findManyByIds(userIds);
+            const userMap = new Map(users.map(u => [u.id, u]));
+            res.json(this.presenter.presentWorkItems(items, userMap));
         } catch (error) {
             next(error);
         }
@@ -221,7 +233,9 @@ export class WorkItemController {
             };
 
             const updated = await this.updateWorkItemUC.execute(id as string, workspaceId as string, dto, (req as any).user.userId);
-            res.json(this.presenter.presentWorkItem(updated));
+            const user = updated.assignedToUserId ? await this.userRepo.findById(updated.assignedToUserId) : null;
+            const userMap = user ? new Map([[user.id, user]]) : new Map();
+            res.json(this.presenter.presentWorkItem(updated, undefined, userMap));
         } catch (error) {
             next(error);
         }
@@ -237,7 +251,9 @@ export class WorkItemController {
             const { status } = req.body;
 
             const updated = await this.updateWorkItemStatusUC.execute(id as string, workspaceId as string, status as WorkItemStatus, (req as any).user.userId);
-            res.json(this.presenter.presentWorkItem(updated));
+            const user = updated.assignedToUserId ? await this.userRepo.findById(updated.assignedToUserId) : null;
+            const userMap = user ? new Map([[user.id, user]]) : new Map();
+            res.json(this.presenter.presentWorkItem(updated, undefined, userMap));
         } catch (error) {
             next(error);
         }

@@ -88,7 +88,8 @@ const workspaceController = new WorkspaceController(
     inviteUserUseCase,
     updateMemberUseCase,
     removeMemberUseCase,
-    presenter
+    presenter,
+    userRepo
 );
 
 // 5. Define routes with authentication and authorization middleware

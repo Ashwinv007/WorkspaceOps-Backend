@@ -1,7 +1,7 @@
 import { IEntityRepository } from '../../domain/repositories/IEntityRepository';
 import { IWorkspaceRepository } from '../../../workspace/domain/repositories/IWorkspaceRepository';
 import { Entity, EntityRole } from '../../domain/entities/Entity';
-import { NotFoundError, ValidationError } from '../../../../shared/domain/errors/AppError';
+import { NotFoundError, ValidationError, ConflictError } from '../../../../shared/domain/errors/AppError';
 import { isValidObjectId } from '../../../../shared/utils/ValidationUtils';
 import { IAuditLogService } from '../../../audit-log/application/services/IAuditLogService';
 import { AuditAction } from '../../../audit-log/domain/enums/AuditAction';
@@ -18,6 +18,7 @@ export interface CreateEntityDTO {
     userId: string;
     name: string;
     role: EntityRole;
+    parentId?: string;
 }
 
 export class CreateEntity {
@@ -55,14 +56,34 @@ export class CreateEntity {
             );
         }
 
-        // 5. Create entity
+        // 5. Enforce at most one SELF entity per workspace
+        if (dto.role === EntityRole.SELF) {
+            const existing = await this.entityRepo.findByWorkspaceIdFiltered(dto.workspaceId, EntityRole.SELF);
+            if (existing.length > 0) {
+                throw new ConflictError('A SELF entity already exists in this workspace.');
+            }
+        }
+
+        // 6. Validate parent entity role — parent cannot be EMPLOYEE
+        if (dto.parentId) {
+            const parent = await this.entityRepo.findById(dto.parentId);
+            if (!parent) {
+                throw new NotFoundError('Parent entity not found');
+            }
+            if (parent.role === EntityRole.EMPLOYEE) {
+                throw new ValidationError('Parent entity cannot be an EMPLOYEE.');
+            }
+        }
+
+        // 7. Create entity
         const entity = await this.entityRepo.create({
             workspaceId: dto.workspaceId,
             name: dto.name.trim(),
-            role: dto.role
+            role: dto.role,
+            parentId: dto.parentId
         });
 
-        // 6. Audit log (fire-and-forget)
+        // 8. Audit log (fire-and-forget)
         await this.auditLogService?.log({
             workspaceId: dto.workspaceId,
             userId: dto.userId,

@@ -19,6 +19,7 @@ export class DocumentTypePresenter {
                 name: documentType.name,
                 hasMetadata: documentType.hasMetadata,
                 hasExpiry: documentType.hasExpiry,
+                entityType: documentType.entityType ?? null,
                 fields: fields.map(f => this.presentField(f)),
                 createdAt: documentType.createdAt?.toISOString()
             }
@@ -37,6 +38,7 @@ export class DocumentTypePresenter {
                 name: dt.documentType.name,
                 hasMetadata: dt.documentType.hasMetadata,
                 hasExpiry: dt.documentType.hasExpiry,
+                entityType: dt.documentType.entityType ?? null,
                 fields: dt.fields.map(f => this.presentField(f)),
                 createdAt: dt.documentType.createdAt?.toISOString()
             }))

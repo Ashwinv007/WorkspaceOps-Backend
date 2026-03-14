@@ -34,6 +34,12 @@ export class UserRepositoryImpl implements IUserRepository {
         return this.toDomain(doc);
     }
 
+    async findManyByIds(ids: string[]): Promise<User[]> {
+        if (ids.length === 0) return [];
+        const docs = await UserModel.find({ _id: { $in: ids } });
+        return docs.map(doc => this.toDomain(doc));
+    }
+
     async delete(id: string): Promise<void> {
         await UserModel.findByIdAndDelete(id);
     }

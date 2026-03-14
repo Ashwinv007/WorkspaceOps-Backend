@@ -23,6 +23,7 @@ import { WorkItemRepositoryImpl } from '../mongoose/WorkItemRepositoryImpl';
 import { WorkItemDocumentRepositoryImpl } from '../mongoose/WorkItemDocumentRepositoryImpl';
 import { EntityRepositoryImpl } from '../../../entity/infrastructure/mongoose/EntityRepositoryImpl';
 import { DocumentRepositoryImpl } from '../../../document/infrastructure/mongoose/DocumentRepositoryImpl';
+import { UserRepositoryImpl } from '../../../auth/infrastructure/mongoose/UserRepositoryImpl';
 
 // Audit log service (cross-cutting)
 import { auditLogService } from '../../../audit-log/infrastructure/routes/auditLog.routes';
@@ -50,6 +51,7 @@ const workItemRepo = new WorkItemRepositoryImpl();
 const workItemDocumentRepo = new WorkItemDocumentRepositoryImpl();
 const entityRepo = new EntityRepositoryImpl();
 const documentRepo = new DocumentRepositoryImpl();
+const userRepo = new UserRepositoryImpl();
 
 // 2. Create use cases with injected dependencies
 
@@ -87,7 +89,8 @@ const controller = new WorkItemController(
     deleteWorkItemUC,
     workItemDocumentRepo,
     getLinkedDocumentsUC,
-    presenter
+    presenter,
+    userRepo
 );
 
 // 4. Define routes with authentication and authorization middleware

@@ -17,6 +17,7 @@ export interface IEntityDocument extends Document {
     workspaceId: mongoose.Types.ObjectId;
     name: string;
     role: 'SELF' | 'CUSTOMER' | 'EMPLOYEE' | 'VENDOR';
+    parentId?: mongoose.Types.ObjectId;
     createdAt: Date;
 }
 
@@ -39,6 +40,11 @@ const EntitySchema = new Schema<IEntityDocument>(
             type: String,
             enum: ['SELF', 'CUSTOMER', 'EMPLOYEE', 'VENDOR'],
             required: true
+        },
+        parentId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Entity',
+            required: false
         },
         createdAt: {
             type: Date,

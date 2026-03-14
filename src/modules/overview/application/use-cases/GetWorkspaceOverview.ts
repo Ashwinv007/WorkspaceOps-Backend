@@ -45,7 +45,7 @@ export class GetWorkspaceOverview {
             this.workItemTypeRepo.findByWorkspace(workspaceId)
         ]);
 
-        const documentValid = documentTotal - documentExpiring - documentExpired;
+        const documentValid = Math.max(0, documentTotal - documentExpiring - documentExpired);
 
         // Fetch field counts for each document type in parallel
         const docTypesWithFields = await Promise.all(
@@ -56,7 +56,7 @@ export class GetWorkspaceOverview {
                     name: dt.name,
                     hasMetadata: dt.hasMetadata,
                     hasExpiry: dt.hasExpiry,
-                    fieldCount: fields.length
+                    fieldCount: fields?.length ?? 0
                 };
             })
         );

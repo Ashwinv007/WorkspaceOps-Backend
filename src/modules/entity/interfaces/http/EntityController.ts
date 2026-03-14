@@ -37,7 +37,7 @@ export class EntityController {
     async createEntity(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const workspaceId = req.params.workspaceId as string;
-            const { name, role } = req.body;
+            const { name, role, parentId } = req.body;
 
             // Validate role is a valid EntityRole
             if (!Object.values(EntityRole).includes(role)) {
@@ -51,7 +51,8 @@ export class EntityController {
                 workspaceId,
                 userId: req.user!.userId,
                 name,
-                role: role as EntityRole
+                role: role as EntityRole,
+                parentId: parentId || undefined
             });
 
             res.status(201).json(this.presenter.presentEntity(entity));
@@ -68,10 +69,12 @@ export class EntityController {
         try {
             const workspaceId = req.params.workspaceId as string;
             const role = req.query.role as string | undefined;
+            const parentId = req.query.parentId as string | undefined;
 
             const entities = await this.getEntitiesUseCase.execute({
                 workspaceId,
-                role: role?.toUpperCase()
+                role: role?.toUpperCase(),
+                parentId
             });
 
             res.status(200).json(this.presenter.presentEntities(entities));
@@ -105,7 +108,7 @@ export class EntityController {
         try {
             const workspaceId = req.params.workspaceId as string;
             const id = req.params.id as string;
-            const { name, role } = req.body;
+            const { name, role, parentId } = req.body;
 
             // Validate role if provided
             if (role !== undefined && !Object.values(EntityRole).includes(role)) {
@@ -120,7 +123,8 @@ export class EntityController {
                 workspaceId,
                 userId: req.user!.userId,
                 name,
-                role: role as EntityRole | undefined
+                role: role as EntityRole | undefined,
+                parentId: parentId !== undefined ? (parentId || null) : undefined
             });
 
             res.status(200).json(this.presenter.presentEntity(entity));

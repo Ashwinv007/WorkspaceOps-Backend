@@ -34,6 +34,11 @@ const documentTypeSchema = new Schema(
         hasExpiry: {
             type: Boolean,
             default: false
+        },
+        entityType: {
+            type: String,
+            enum: ['SELF', 'CUSTOMER', 'EMPLOYEE', 'VENDOR'],
+            required: false
         }
     },
     {

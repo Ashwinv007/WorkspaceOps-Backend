@@ -1,4 +1,4 @@
-import { Entity } from '../entities/Entity';
+import { Entity, EntityRole } from '../entities/Entity';
 
 /**
  * Entity Repository Interface (Domain Layer)
@@ -25,7 +25,7 @@ export interface IEntityRepository {
     /**
      * Update entity
      */
-    update(id: string, updates: Partial<Pick<Entity, 'name' | 'role'>>): Promise<Entity>;
+    update(id: string, updates: { name?: string; role?: EntityRole; parentId?: string | null }): Promise<Entity>;
 
     /**
      * Delete entity
@@ -43,7 +43,7 @@ export interface IEntityRepository {
     countByRoleGrouped(workspaceId: string): Promise<Record<string, number>>;
 
     /**
-     * Find entities in a workspace with optional role filter
+     * Find entities in a workspace with optional role and parentId filters
      */
-    findByWorkspaceIdFiltered(workspaceId: string, role?: string): Promise<Entity[]>;
+    findByWorkspaceIdFiltered(workspaceId: string, role?: string, parentId?: string): Promise<Entity[]>;
 }

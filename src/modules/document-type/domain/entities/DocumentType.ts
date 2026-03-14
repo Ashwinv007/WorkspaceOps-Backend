@@ -22,6 +22,7 @@ export class DocumentType {
         public readonly name: string,
         public readonly hasMetadata: boolean = false,
         public readonly hasExpiry: boolean = false,
+        public readonly entityType?: string,
         public readonly createdAt?: Date
     ) {
         this.validate();
@@ -50,14 +51,16 @@ export class DocumentType {
         workspaceId: string,
         name: string,
         hasMetadata: boolean = false,
-        hasExpiry: boolean = false
+        hasExpiry: boolean = false,
+        entityType?: string
     ): Omit<DocumentType, 'id' | 'createdAt'> {
         const tempDocType = new DocumentType(
             'temp',
             workspaceId,
             name.trim(),
             hasMetadata,
-            hasExpiry
+            hasExpiry,
+            entityType
         );
 
         return {
@@ -65,6 +68,7 @@ export class DocumentType {
             name: tempDocType.name,
             hasMetadata: tempDocType.hasMetadata,
             hasExpiry: tempDocType.hasExpiry,
+            entityType: tempDocType.entityType,
             validate: tempDocType.validate.bind(tempDocType)
         } as any;
     }

@@ -17,7 +17,8 @@ export class EntityRepositoryImpl implements IEntityRepository {
         const doc = await EntityModel.create({
             workspaceId: entity.workspaceId,
             name: entity.name,
-            role: entity.role
+            role: entity.role,
+            ...(entity.parentId && { parentId: entity.parentId })
         });
 
         return new Entity(
@@ -25,6 +26,7 @@ export class EntityRepositoryImpl implements IEntityRepository {
             doc.workspaceId.toString(),
             doc.name,
             doc.role as EntityRole,
+            doc.parentId?.toString(),
             doc.createdAt
         );
     }
@@ -44,6 +46,7 @@ export class EntityRepositoryImpl implements IEntityRepository {
             doc.workspaceId.toString(),
             doc.name,
             doc.role as EntityRole,
+            doc.parentId?.toString(),
             doc.createdAt
         );
     }
@@ -60,6 +63,7 @@ export class EntityRepositoryImpl implements IEntityRepository {
             doc.workspaceId.toString(),
             doc.name,
             doc.role as EntityRole,
+            doc.parentId?.toString(),
             doc.createdAt
         ));
     }
@@ -67,10 +71,16 @@ export class EntityRepositoryImpl implements IEntityRepository {
     /**
      * Update entity
      */
-    async update(id: string, updates: Partial<Pick<Entity, 'name' | 'role'>>): Promise<Entity> {
+    async update(id: string, updates: { name?: string; role?: EntityRole; parentId?: string | null }): Promise<Entity> {
+        const { parentId, ...rest } = updates;
+        const mongoUpdate: Record<string, object> = {};
+        if (Object.keys(rest).length > 0) mongoUpdate.$set = rest;
+        if (parentId === null) mongoUpdate.$unset = { parentId: '' };
+        else if (parentId !== undefined) mongoUpdate.$set = { ...mongoUpdate.$set, parentId };
+
         const doc = await EntityModel.findByIdAndUpdate(
             id,
-            { $set: updates },
+            mongoUpdate,
             { new: true, runValidators: true }
         );
 
@@ -83,6 +93,7 @@ export class EntityRepositoryImpl implements IEntityRepository {
             doc.workspaceId.toString(),
             doc.name,
             doc.role as EntityRole,
+            doc.parentId?.toString(),
             doc.createdAt
         );
     }
@@ -122,11 +133,12 @@ export class EntityRepositoryImpl implements IEntityRepository {
     }
 
     /**
-     * Find entities in a workspace with optional role filter
+     * Find entities in a workspace with optional role and parentId filters
      */
-    async findByWorkspaceIdFiltered(workspaceId: string, role?: string): Promise<Entity[]> {
+    async findByWorkspaceIdFiltered(workspaceId: string, role?: string, parentId?: string): Promise<Entity[]> {
         const query: Record<string, string> = { workspaceId };
         if (role) query.role = role;
+        if (parentId) query.parentId = parentId;
 
         const docs = await EntityModel.find(query).sort({ createdAt: -1 });
 
@@ -135,6 +147,7 @@ export class EntityRepositoryImpl implements IEntityRepository {
             doc.workspaceId.toString(),
             doc.name,
             doc.role as EntityRole,
+            doc.parentId?.toString(),
             doc.createdAt
         ));
     }

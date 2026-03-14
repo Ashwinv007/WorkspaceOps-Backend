@@ -25,6 +25,11 @@ export interface IUserRepository {
     save(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User>;
 
     /**
+     * Find multiple users by their IDs in a single batch query
+     */
+    findManyByIds(ids: string[]): Promise<User[]>;
+
+    /**
      * Delete user by ID
      */
     delete(id: string): Promise<void>;

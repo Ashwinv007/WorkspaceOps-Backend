@@ -33,13 +33,13 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: yourdockerhubusername/workspaceops-backend:latest
+          tags: ashwinv0705/workspaceops-backend:latest
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ec2-user
+          username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ec2-user/workspaceops-backend

@@ -33,7 +33,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: ashwinv0705/workspaceops-backend:latest
+          tags: ashwin0705/workspaceops-backend:latest
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1

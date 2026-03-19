@@ -323,8 +323,8 @@ Define reusable templates for documents, with optional custom metadata fields an
   "hasMetadata": true,
   "hasExpiry": true,
   "fields": [
-    { "fieldName": "Policy Number", "fieldType": "text", "isRequired": true },
-    { "fieldName": "Expiry Date", "fieldType": "date", "isRequired": true, "isExpiryField": true }
+    { "fieldKey": "Policy Number", "fieldType": "text", "isRequired": true },
+    { "fieldKey": "Expiry Date", "fieldType": "date", "isRequired": true, "isExpiryField": true }
   ]
 }
 ```
@@ -443,14 +443,14 @@ All write operations are automatically recorded. Logs are query-only.
 | `targetId` | string | Filter by specific resource ID |
 | `fromDate` | ISO string | Start of date range |
 | `toDate` | ISO string | End of date range |
-| `limit` | number | Page size (default: 20) |
+| `limit` | number | Page size (default: 50, max 200) |
 | `offset` | number | Pagination offset (default: 0) |
 
 **Response:**
 ```json
 {
   "total": 150,
-  "limit": 20,
+  "limit": 50,
   "offset": 0,
   "logs": [
     {

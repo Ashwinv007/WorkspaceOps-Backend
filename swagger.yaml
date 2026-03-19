@@ -210,8 +210,40 @@ components:
         - $ref: '#/components/schemas/Workspace'
         - type: object
           properties:
-            role:
+            userRole:
               $ref: '#/components/schemas/WorkspaceRole'
+
+    WorkspaceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/WorkspaceWithRole'
+
+    WorkspaceListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkspaceWithRole'
+        count:
+          type: integer
+          example: 2
+
+    WorkspaceMemberResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/WorkspaceMember'
 
     WorkspaceMember:
       type: object
@@ -222,6 +254,15 @@ components:
           type: string
         userId:
           type: string
+        userEmail:
+          type: string
+          format: email
+          nullable: true
+          description: Resolved email address of the user
+        userName:
+          type: string
+          nullable: true
+          description: Resolved display name of the user
         role:
           $ref: '#/components/schemas/WorkspaceRole'
         createdAt:
@@ -250,6 +291,10 @@ components:
           example: "Acme Corp"
         role:
           $ref: '#/components/schemas/EntityRole'
+        parentId:
+          type: string
+          nullable: true
+          description: Optional parent entity ID (for hierarchical entities)
         createdAt:
           type: string
           format: date-time
@@ -324,6 +369,17 @@ components:
           example: true
         data:
           $ref: '#/components/schemas/DocumentType'
+
+    DocumentTypeListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentType'
 
     # ── Document ──────────────────────────────────────────────────────────────────
     DocumentStatus:
@@ -482,6 +538,19 @@ components:
               items:
                 type: string
               description: IDs of documents linked to this work item
+            linkedDocumentCount:
+              type: integer
+              description: Number of linked documents
+              example: 2
+            assignedToUserEmail:
+              type: string
+              format: email
+              nullable: true
+              description: Resolved email of the assigned user
+            assignedToUserName:
+              type: string
+              nullable: true
+              description: Resolved display name of the assigned user
 
     WorkItemDocument:
       type: object
@@ -536,6 +605,15 @@ components:
         userId:
           type: string
           description: ID of the user who performed the action
+        userEmail:
+          type: string
+          format: email
+          nullable: true
+          description: Resolved email of the user who performed the action
+        userName:
+          type: string
+          nullable: true
+          description: Resolved display name of the user who performed the action
         action:
           $ref: '#/components/schemas/AuditAction'
         targetType:
@@ -787,7 +865,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WorkspaceWithRole'
+                $ref: '#/components/schemas/WorkspaceResponse'
         '400':
           description: Validation error
           content:
@@ -805,9 +883,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/WorkspaceWithRole'
+                $ref: '#/components/schemas/WorkspaceListResponse'
 
   /workspaces/{id}/members:
     get:
@@ -835,6 +911,8 @@ paths:
                   - id: "mem_abc"
                     workspaceId: "ws_abc123"
                     userId: "user_xyz"
+                    userEmail: "alice@example.com"
+                    userName: "Alice"
                     role: "ADMIN"
                     createdAt: "2025-01-01T00:00:00.000Z"
                 count: 3
@@ -872,7 +950,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/WorkspaceMember'
+                $ref: '#/components/schemas/WorkspaceMemberResponse'
         '403':
           description: Insufficient permissions
         '404':
@@ -1144,13 +1222,11 @@ paths:
         - $ref: '#/components/parameters/workspaceId'
       responses:
         '200':
-          description: Array of document types
+          description: List of document types wrapped in success envelope
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DocumentType'
+                $ref: '#/components/schemas/DocumentTypeListResponse'
 
   /workspaces/{workspaceId}/document-types/{id}:
     get:
@@ -1166,7 +1242,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DocumentType'
+                $ref: '#/components/schemas/DocumentTypeCreatedResponse'
         '404':
           description: Not found
 
@@ -1380,13 +1456,11 @@ paths:
           description: Threshold — documents expiring within this many days are returned (default 30)
       responses:
         '200':
-          description: Array of expiring/expired documents
+          description: Expiring/expired documents with total count
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Document'
+                $ref: '#/components/schemas/DocumentListResponse'
 
   /workspaces/{workspaceId}/documents/{id}:
     get:
@@ -1498,13 +1572,11 @@ paths:
         - $ref: '#/components/parameters/entityId'
       responses:
         '200':
-          description: Documents belonging to the entity
+          description: Documents belonging to the entity with total count
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Document'
+                $ref: '#/components/schemas/DocumentListResponse'
 
   # ── Work Item Types ───────────────────────────────────────────────────────────
   /workspaces/{workspaceId}/work-item-types:
@@ -2029,6 +2101,8 @@ paths:
                   - id: "6790abc123def456"
                     workspaceId: "ws_abc"
                     userId: "user_xyz"
+                    userEmail: "alice@example.com"
+                    userName: "Alice"
                     action: "WORK_ITEM_CREATED"
                     targetType: "WorkItem"
                     targetId: "wi_789"

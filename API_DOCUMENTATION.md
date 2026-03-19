@@ -59,11 +59,11 @@ Each endpoint description states the **minimum** role required.
 |----------------|--------------------------------------------------|
 | Auth (signup)  | `{ success, data: { userId, workspaceId, token }, message }` |
 | Auth (login)   | `{ success, data: { userId, token }, message }` |
-| Workspace      | Direct object or array with `role` field         |
-| Entity         | Direct object `{ id, workspaceId, name, role }` |
+| Workspace      | `{ success: true, data: {...} }` (single) or `{ success: true, data: [...], count }` (list) |
+| Entity         | Direct object `{ id, workspaceId, name, role, parentId }` |
 | Entity list    | `{ entities: [...], count }`                    |
-| Document Type  | `{ success: true, data: {...} }` (create only)  |
-| Document Type list | Direct array                               |
+| Document Type  | `{ success: true, data: {...} }` (single/create) |
+| Document Type list | `{ success: true, data: [...] }`            |
 | Document       | Direct object with `expiryStatus`, `downloadUrl`|
 | Document list  | `{ documents: [...], count }`                   |
 | Work Item Type | Direct object                                   |
@@ -184,11 +184,14 @@ It is **not** in the signup response — call `GET /workspaces` and copy the `te
 **Response `201`:**
 ```json
 {
-  "id": "ws_xyz",
-  "tenantId": "tenant_abc123",
-  "name": "Acme HQ",
-  "role": "OWNER",
-  "createdAt": "2026-02-20T10:00:00.000Z"
+  "success": true,
+  "data": {
+    "id": "ws_xyz",
+    "tenantId": "tenant_abc123",
+    "name": "Acme HQ",
+    "userRole": "OWNER",
+    "createdAt": "2026-02-20T10:00:00.000Z"
+  }
 }
 ```
 
@@ -201,15 +204,19 @@ Get all workspaces the current user belongs to.
 
 **Response `200`:**
 ```json
-[
-  {
-    "id": "ws_xyz",
-    "tenantId": "tenant_abc123",
-    "name": "Acme HQ",
-    "role": "OWNER",
-    "createdAt": "2026-02-20T10:00:00.000Z"
-  }
-]
+{
+  "success": true,
+  "data": [
+    {
+      "id": "ws_xyz",
+      "tenantId": "tenant_abc123",
+      "name": "Acme HQ",
+      "userRole": "OWNER",
+      "createdAt": "2026-02-20T10:00:00.000Z"
+    }
+  ],
+  "count": 1
+}
 ```
 
 ---
@@ -223,8 +230,8 @@ List all current members of the workspace.
 ```json
 {
   "members": [
-    { "id": "mem_abc", "workspaceId": "ws_xyz", "userId": "64f1a2b3...", "role": "OWNER", "createdAt": "..." },
-    { "id": "mem_def", "workspaceId": "ws_xyz", "userId": "64f1a2b3...", "role": "MEMBER", "createdAt": "..." }
+    { "id": "mem_abc", "workspaceId": "ws_xyz", "userId": "64f1a2b3...", "userEmail": "alice@example.com", "userName": "Alice", "role": "OWNER", "createdAt": "..." },
+    { "id": "mem_def", "workspaceId": "ws_xyz", "userId": "64f1a2b3...", "userEmail": "bob@example.com", "userName": "Bob", "role": "MEMBER", "createdAt": "..." }
   ],
   "count": 2
 }
@@ -255,11 +262,14 @@ Invite an existing user to the workspace by their email address.
 **Response `201`:**
 ```json
 {
-  "id": "member_record_id",
-  "workspaceId": "ws_xyz",
-  "userId": "64f1a2b3c4d5e6f7a8b9c0d2",
-  "role": "MEMBER",
-  "createdAt": "2026-02-20T10:00:00.000Z"
+  "success": true,
+  "data": {
+    "id": "member_record_id",
+    "workspaceId": "ws_xyz",
+    "userId": "64f1a2b3c4d5e6f7a8b9c0d2",
+    "role": "MEMBER",
+    "createdAt": "2026-02-20T10:00:00.000Z"
+  }
 }
 ```
 
@@ -331,6 +341,7 @@ Create a new entity.
   "workspaceId": "ws_xyz",
   "name": "Acme Corp",
   "role": "CUSTOMER",
+  "parentId": null,
   "createdAt": "2026-02-20T10:00:00.000Z"
 }
 ```
@@ -352,7 +363,7 @@ Get all entities in the workspace.
 ```json
 {
   "entities": [
-    { "id": "ent_abc", "workspaceId": "ws_xyz", "name": "Acme Corp", "role": "CUSTOMER", "createdAt": "..." }
+    { "id": "ent_abc", "workspaceId": "ws_xyz", "name": "Acme Corp", "role": "CUSTOMER", "parentId": null, "createdAt": "..." }
   ],
   "count": 1
 }
@@ -365,7 +376,7 @@ Get a single entity by ID.
 
 **Minimum role:** MEMBER
 
-**Response `200`:** Entity object `{ id, workspaceId, name, role, createdAt }`
+**Response `200`:** Entity object `{ id, workspaceId, name, role, parentId, createdAt }`
 
 **Errors:** `404` if entity not found or belongs to a different workspace.
 
@@ -469,7 +480,7 @@ Create a document type.
 }
 ```
 
-> **Note:** The create response is wrapped in `{ success, data }`. All other document type responses return the object/array directly.
+> **Note:** All document type responses (create, single, list) are wrapped in `{ success: true, data: ... }`.
 
 ---
 
@@ -478,7 +489,13 @@ Get all document types (with their fields).
 
 **Minimum role:** MEMBER
 
-**Response `200`:** Direct array of document type objects (no `success` wrapper)
+**Response `200`:**
+```json
+{
+  "success": true,
+  "data": [ ...document type objects with fields array... ]
+}
+```
 
 ---
 
@@ -487,7 +504,13 @@ Get a single document type by ID.
 
 **Minimum role:** MEMBER
 
-**Response `200`:** Document type object with `fields` array
+**Response `200`:**
+```json
+{
+  "success": true,
+  "data": { ...document type object with fields array... }
+}
+```
 
 ---
 
@@ -629,7 +652,13 @@ Get documents that are expiring soon or already expired.
 |-------|---------|---------|----------------------------------------|
 | `days` | integer | 30     | Documents expiring within N days returned |
 
-**Response `200`:** Array of document objects (with `expiryStatus` of `EXPIRING` or `EXPIRED`)
+**Response `200`:**
+```json
+{
+  "documents": [ ...document objects with expiryStatus of EXPIRING or EXPIRED... ],
+  "count": 3
+}
+```
 
 ---
 
@@ -666,7 +695,13 @@ Get all documents belonging to a specific entity.
 
 **Minimum role:** MEMBER
 
-**Response `200`:** Array of document objects
+**Response `200`:**
+```json
+{
+  "documents": [ ...document objects... ],
+  "count": 5
+}
+```
 
 ---
 
@@ -825,11 +860,15 @@ Get a single work item by ID.
   "workItemTypeId": "wit_abc",
   "entityId": "ent_123",
   "assignedToUserId": "user_xyz",
+  "assignedToUserEmail": "user@example.com",
+  "assignedToUserName": "Jane Doe",
   "title": "Collect passport documents",
+  "description": "Collect and verify passport copy and renewal form",
   "status": "DRAFT",
   "priority": "HIGH",
   "dueDate": "2026-03-15T00:00:00.000Z",
   "linkedDocumentIds": ["doc_abc", "doc_def"],
+  "linkedDocumentCount": 2,
   "createdAt": "2026-02-20T10:00:00.000Z",
   "updatedAt": "2026-02-20T10:00:00.000Z"
 }
@@ -1006,6 +1045,8 @@ Get the audit trail with filtering and pagination.
       "id": "6790abc123def456",
       "workspaceId": "ws_xyz",
       "userId": "user_abc",
+      "userEmail": "alice@example.com",
+      "userName": "Alice",
       "action": "WORK_ITEM_CREATED",
       "targetType": "WorkItem",
       "targetId": "wi_789",
@@ -1096,13 +1137,15 @@ Get aggregated workspace summary for dashboard display.
 | createdAt | datetime |                  |
 
 ### WorkspaceMember
-| Field       | Type          | Notes                    |
-|-------------|---------------|--------------------------|
-| id          | string        |                          |
-| workspaceId | string        |                          |
-| userId      | string        |                          |
-| role        | WorkspaceRole | OWNER/ADMIN/MEMBER/VIEWER|
-| createdAt   | datetime      |                          |
+| Field       | Type          | Notes                              |
+|-------------|---------------|------------------------------------|
+| id          | string        |                                    |
+| workspaceId | string        |                                    |
+| userId      | string        |                                    |
+| userEmail   | string?       | Resolved email of the user         |
+| userName    | string?       | Resolved display name of the user  |
+| role        | WorkspaceRole | OWNER/ADMIN/MEMBER/VIEWER          |
+| createdAt   | datetime      |                                    |
 
 ### Entity
 | Field       | Type       | Notes                               |
@@ -1111,6 +1154,7 @@ Get aggregated workspace summary for dashboard display.
 | workspaceId | string     |                                     |
 | name        | string     | Max 255 chars                       |
 | role        | EntityRole | SELF/CUSTOMER/EMPLOYEE/VENDOR       |
+| parentId    | string?    | Optional parent entity ID           |
 | createdAt   | datetime   |                                     |
 
 ### DocumentType
@@ -1163,31 +1207,37 @@ Get aggregated workspace summary for dashboard display.
 | createdAt   | datetime |                                          |
 
 ### WorkItem
-| Field            | Type             | Notes                       |
-|------------------|------------------|-----------------------------|
-| id               | string           |                             |
-| workspaceId      | string           |                             |
-| workItemTypeId   | string           |                             |
-| entityId         | string           |                             |
-| assignedToUserId | string           |                             |
-| title            | string           | Max 255 chars               |
-| description      | string?          | Max 2000 chars              |
-| status           | WorkItemStatus   | DRAFT/ACTIVE/COMPLETED      |
-| priority         | WorkItemPriority?| LOW/MEDIUM/HIGH             |
-| dueDate          | datetime?        |                             |
-| createdAt        | datetime         |                             |
-| updatedAt        | datetime         |                             |
+| Field                | Type             | Notes                                  |
+|----------------------|------------------|----------------------------------------|
+| id                   | string           |                                        |
+| workspaceId          | string           |                                        |
+| workItemTypeId       | string           |                                        |
+| entityId             | string           |                                        |
+| assignedToUserId     | string           |                                        |
+| assignedToUserEmail  | string?          | Resolved email of the assigned user    |
+| assignedToUserName   | string?          | Resolved display name of assigned user |
+| title                | string           | Max 255 chars                          |
+| description          | string?          | Max 2000 chars                         |
+| status               | WorkItemStatus   | DRAFT/ACTIVE/COMPLETED                 |
+| priority             | WorkItemPriority?| LOW/MEDIUM/HIGH                        |
+| dueDate              | datetime?        |                                        |
+| linkedDocumentIds    | string[]         | IDs of linked documents                |
+| linkedDocumentCount  | number           | Count of linked documents              |
+| createdAt            | datetime         |                                        |
+| updatedAt            | datetime         |                                        |
 
 ### AuditLog
-| Field       | Type        | Notes                  |
-|-------------|-------------|------------------------|
-| id          | string      | MongoDB ObjectId        |
-| workspaceId | string      |                        |
-| userId      | string      | Who did the action     |
-| action      | AuditAction | See enum below         |
-| targetType  | string      | e.g., "WorkItem"       |
-| targetId    | string?     | Affected resource ID   |
-| createdAt   | datetime    |                        |
+| Field       | Type        | Notes                           |
+|-------------|-------------|---------------------------------|
+| id          | string      | MongoDB ObjectId                |
+| workspaceId | string      |                                 |
+| userId      | string      | Who did the action              |
+| userEmail   | string?     | Resolved email of the actor     |
+| userName    | string?     | Resolved display name of actor  |
+| action      | AuditAction | See enum below                  |
+| targetType  | string      | e.g., "WorkItem"                |
+| targetId    | string?     | Affected resource ID            |
+| createdAt   | datetime    |                                 |
 
 ---
 

@@ -10,7 +10,7 @@
   },
   "exclude": [
     "debug-token.ts",
-    "setup-test-data.ts",
+    "manual-tests",
     "node_modules"
   ]
 }

@@ -15,7 +15,7 @@ export class S3FileStorageService implements IFileStorageService {
                 secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
             },
         });
-        this.bucket = process.env.S3_BUCKET_NAME!;
+        this.bucket = process.env.AWS_BUCKET_NAME!;
     }
 
     async saveFile(workspaceId: string, documentId: string, file: Express.Multer.File): Promise<string> {

@@ -4,7 +4,9 @@ import { IDocumentTypeRepository } from '../../../document-type/domain/repositor
 import { IWorkItemRepository } from '../../../work-item/domain/repositories/IWorkItemRepository';
 import { IWorkItemTypeRepository } from '../../../work-item/domain/repositories/IWorkItemTypeRepository';
 import { GetOverviewDTO, WorkspaceOverviewResult } from '../dto/OverviewDTO';
+import NodeCache from 'node-cache';
 
+const overviewCache = new NodeCache({ stdTTL: 60 }) //cache for 60 seconds.
 const EXPIRY_THRESHOLD_DAYS = 30;
 
 /**
@@ -20,11 +22,17 @@ export class GetWorkspaceOverview {
         private readonly documentTypeRepo: IDocumentTypeRepository,
         private readonly workItemRepo: IWorkItemRepository,
         private readonly workItemTypeRepo: IWorkItemTypeRepository
-    ) {}
+    ) { }
 
     async execute(dto: GetOverviewDTO): Promise<WorkspaceOverviewResult> {
         const { workspaceId } = dto;
 
+        //check cache
+        const cacheKey = `overview:${workspaceId}`;
+        const cached = overviewCache.get<WorkspaceOverviewResult>(cacheKey);
+        if (cached) return cached;
+
+        //Cache miss - run all db queries
         const [
             entityTotal,
             entityByRole,
@@ -61,7 +69,7 @@ export class GetWorkspaceOverview {
             })
         );
 
-        return {
+        const result: WorkspaceOverviewResult = {
             workspaceId,
             entities: {
                 total: entityTotal,
@@ -95,5 +103,8 @@ export class GetWorkspaceOverview {
                 ...(wit.entityType && { entityType: wit.entityType })
             }))
         };
+
+        overviewCache.set(cacheKey, result);
+        return result;
     }
 }

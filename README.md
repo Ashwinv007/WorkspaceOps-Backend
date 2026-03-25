@@ -6,6 +6,7 @@ A multi-tenant workspace management API built with **Express.js**, **MongoDB**, 
 
 ## Table of Contents
 
+- [Documentation](#documentation)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
@@ -25,6 +26,27 @@ A multi-tenant workspace management API built with **Express.js**, **MongoDB**, 
 - [Real-Time Events](#real-time-events)
 - [Business Rules](#business-rules)
 - [Project Structure](#project-structure)
+
+---
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [High Level Design (HLD)](./PLAN/HLD.md) | System context, container architecture, deployment topology, design decisions |
+| [LLD — State Machines](./PLAN/LLD_STATE_MACHINES.md) | Work item lifecycle, expiry status, role transitions |
+| [LLD — Sequence Diagrams](./PLAN/LLD_SEQUENCE_DIAGRAMS.md) | Login, upload document, update work item status flows |
+| [Use Case Diagram](./PLAN/USE_CASE_DIAGRAM.md) | Who can do what — actors, roles, and system capabilities |
+| [Architecture Decision Records](./PLAN/ADR/README.md) | Why each major technical decision was made |
+| [Error Catalogue](./PLAN/ERROR_CATALOGUE.md) | Every API error with status code, message, and source |
+| [Non-Functional Requirements](./PLAN/NFR.md) | Performance, availability, security, scalability targets |
+| [API Documentation](./API_DOCUMENTATION.md) | Complete REST API reference |
+| [Clean Architecture Design](./PLAN/clean_architecture_design.md) | Detailed 4-layer architecture with folder structure |
+| [Technical Decisions](./PLAN/technical_decisions.md) | Rationale behind every major architectural choice |
+| [Production Guide](./PLAN/production-guide.md) | Deployment, Docker, CI/CD, load testing |
+| [Test Report](./PLAN/test_report.md) | All 29 HLRs — test results |
+| [ER Diagram](./PLAN/er_diagram_v2.pdf) | Entity relationship diagram |
+| [MongoDB Schema](./PLAN/mongodb-schema.pdf) | Database schema reference |
 
 ---
 

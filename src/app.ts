@@ -13,9 +13,26 @@ import workItemRoutes from './modules/work-item/infrastructure/routes/workItem.r
 import auditLogRoutes from './modules/audit-log/infrastructure/routes/auditLog.routes';
 import overviewRoutes from './modules/overview/infrastructure/routes/overview.routes';
 import { errorHandler } from './shared/interfaces/middleware/errorHandler';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
+app.use(compression());
 
+
+// General API: 100 requests per minute per IP
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: { error: 'Too many requests, please slow down.' }
+}))
+
+// Auth endpoints: 10 per minute (brute force protection)
+app.use('/auth/login', rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts, try again in a minute.' }
+}))
 // CORS — allow frontend origin (set FRONTEND_URL in .env for production)
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',

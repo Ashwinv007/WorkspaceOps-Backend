@@ -253,25 +253,23 @@ export class DocumentController {
             const workspaceId = req.params.workspaceId as string;
             const id = req.params.id as string;
 
-            // Get document metadata
             const document = await this.getDocumentByIdUseCase.execute(id, workspaceId);
 
-            // Get local file path
-            const localPath = this.fileStorageService.getLocalPath(document.fileUrl);
+            if (this.fileStorageService.getPresignedUrl) {
+                const presignedUrl = await this.fileStorageService.getPresignedUrl(document.fileUrl);
+                res.redirect(302, presignedUrl);
+                return;
+            }
 
-            // Check if file exists
+            // Local fallback
+            const localPath = this.fileStorageService.getLocalPath(document.fileUrl);
             if (!fs.existsSync(localPath)) {
                 res.status(404).json({ error: 'File not found on server' });
                 return;
             }
-
-            // Set headers for download
             res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
             res.setHeader('Content-Type', document.mimeType || 'application/octet-stream');
-
-            // Stream file to response
-            const fileStream = fs.createReadStream(localPath);
-            fileStream.pipe(res);
+            fs.createReadStream(localPath).pipe(res);
         } catch (error) {
             next(error);
         }

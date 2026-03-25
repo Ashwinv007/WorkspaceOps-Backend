@@ -3,3 +3,7 @@ node_modules/
 dist/
 .env
 uploads/
+.claude/
+personal/
+PLAN/
+frontend_plan/

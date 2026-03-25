@@ -17,7 +17,7 @@ import { DocumentTypeRepositoryImpl } from '../../../document-type/infrastructur
 import { EntityRepositoryImpl } from '../../../entity/infrastructure/mongoose/EntityRepositoryImpl';
 
 // Infrastructure services
-import { LocalFileStorageService } from '../storage/FileStorageService';
+import { S3FileStorageService } from '../storage/S3FileStorageService';
 import { upload } from '../middleware/upload.middleware';
 
 // Audit log service (cross-cutting)
@@ -26,6 +26,8 @@ import { auditLogService } from '../../../audit-log/infrastructure/routes/auditL
 // Middleware
 import { authMiddleware } from '../../../../common/middleware/auth.middleware';
 import { requireAdmin, requireMember } from '../../../../common/middleware/rbac.middleware';
+
+
 
 /**
  * Document Routes (Infrastructure Layer)
@@ -43,9 +45,7 @@ const router = Router();
 const documentRepo = new DocumentRepositoryImpl();
 const documentTypeRepo = new DocumentTypeRepositoryImpl();
 const entityRepo = new EntityRepositoryImpl();
-const fileStorageService = new LocalFileStorageService(
-    process.env.UPLOAD_DIR || './uploads'
-);
+const fileStorageService = new S3FileStorageService();
 
 // 2. Create use cases with injected dependencies
 const uploadDocumentUseCase = new UploadDocument(

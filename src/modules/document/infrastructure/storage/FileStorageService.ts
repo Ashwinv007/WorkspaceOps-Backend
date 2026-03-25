@@ -15,6 +15,7 @@ export interface IFileStorageService {
     getFileUrl(workspaceId: string, documentId: string, fileName: string): string;
     deleteFile(fileUrl: string): Promise<void>;
     getLocalPath(fileUrl: string): string;
+    getPresignedUrl?(fileUrl: string): Promise<string>;
 }
 
 /**
